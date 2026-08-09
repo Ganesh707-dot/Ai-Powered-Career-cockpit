@@ -13,6 +13,8 @@ import {
   Mic,
   Rocket,
   Search,
+  Sparkles,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +25,8 @@ const navigation = [
   { name: "JD Intelligence", href: "/jd-analysis", icon: Brain },
   { name: "Interview Prep", href: "/interview-prep", icon: Mic },
   { name: "HR Answer Studio", href: "/hr-studio", icon: MessageSquare },
+  { name: "AI Career Staff", href: "/mentor", icon: Bot },
+  { name: "AI Coach", href: "/ai-coach", icon: Sparkles },
   { name: "Interview Journal", href: "/journal", icon: BookOpen },
   { name: "Resume Intelligence", href: "/resumes", icon: FileText },
   { name: "Learning", href: "/learning", icon: Search },
@@ -73,10 +77,10 @@ export function Sidebar() {
 
       <div className="border-t border-sidebar-border p-4">
         <div className="rounded-lg bg-primary/5 p-3">
-          <p className="text-xs font-medium text-primary">Pro Tip</p>
+          <p className="text-xs font-medium text-primary">Gemini AI Live</p>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Press <kbd className="rounded border px-1 py-0.5 text-[10px]">⌘K</kbd> for
-            quick actions
+            JD, interview prep, HR, resume coach, and career insights are generated
+            live by Google Gemini — zero static answer banks.
           </p>
         </div>
       </div>

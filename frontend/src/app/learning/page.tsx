@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { BookOpen, Pencil, Plus, Trash2, Sparkles } from "lucide-react";
+import { api, ApiError } from "@/lib/api";
+import { useProfileStore } from "@/stores/profile-store";
 import type {
   LearningCategory,
   LearningTopic,
@@ -46,6 +47,25 @@ export default function LearningPage() {
     notes: "",
     resources: "",
   });
+  const [pathLoading, setPathLoading] = useState(false);
+  const [pathError, setPathError] = useState<string | null>(null);
+  const [pathSummary, setPathSummary] = useState<string | null>(null);
+  const profile = useProfileStore();
+  const [pathForm, setPathForm] = useState({
+    current_level: profile.currentLevel,
+    target_role: profile.targetRole,
+    skills: profile.skills || "React, TypeScript, Next.js, Node.js",
+    weeks: 6,
+  });
+
+  useEffect(() => {
+    setPathForm((f) => ({
+      ...f,
+      current_level: profile.currentLevel,
+      target_role: profile.targetRole,
+      skills: profile.skills || f.skills,
+    }));
+  }, [profile.currentLevel, profile.targetRole, profile.skills]);
 
   const fetchTopics = async () => {
     setLoading(true);
@@ -111,6 +131,30 @@ export default function LearningPage() {
     fetchTopics();
   };
 
+  const generatePath = async () => {
+    setPathLoading(true);
+    setPathError(null);
+    try {
+      const data = await api.post<{
+        headline: string;
+        roadmap_summary: string;
+        created_topic_ids: number[];
+      }>("/learning/generate-path", {
+        current_level: pathForm.current_level,
+        target_role: pathForm.target_role,
+        skills: pathForm.skills.split(",").map((s) => s.trim()).filter(Boolean),
+        weeks: pathForm.weeks,
+        persist: true,
+      });
+      setPathSummary(`${data.headline}\n\n${data.roadmap_summary}`);
+      await fetchTopics();
+    } catch (err) {
+      setPathError(err instanceof ApiError ? err.message : "Path generation failed");
+    } finally {
+      setPathLoading(false);
+    }
+  };
+
   const grouped = LEARNING_CATEGORIES.reduce(
     (acc, cat) => {
       acc[cat] = topics.filter((t) => t.category === cat);
@@ -121,6 +165,63 @@ export default function LearningPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <p className="text-sm font-medium">Gemini learning roadmap</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Generate a week-by-week plan from your current level to your target role. Topics are saved into this board.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <Label>Current level</Label>
+              <Input
+                value={pathForm.current_level}
+                onChange={(e) => setPathForm({ ...pathForm, current_level: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Target role</Label>
+              <Input
+                value={pathForm.target_role}
+                onChange={(e) => setPathForm({ ...pathForm, target_role: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Skills</Label>
+              <Input
+                value={pathForm.skills}
+                onChange={(e) => setPathForm({ ...pathForm, skills: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Weeks</Label>
+              <Input
+                type="number"
+                min={2}
+                max={16}
+                value={pathForm.weeks}
+                onChange={(e) =>
+                  setPathForm({ ...pathForm, weeks: Number(e.target.value) || 6 })
+                }
+              />
+            </div>
+          </div>
+          <Button onClick={generatePath} disabled={pathLoading}>
+            <Sparkles className="h-4 w-4" />
+            {pathLoading ? "Generating with Gemini…" : "Generate AI learning path"}
+          </Button>
+          {pathError && <p className="text-sm text-destructive">{pathError}</p>}
+          {pathSummary && (
+            <pre className="whitespace-pre-wrap text-xs text-muted-foreground rounded-md bg-muted/40 p-3">
+              {pathSummary}
+            </pre>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4 text-center">

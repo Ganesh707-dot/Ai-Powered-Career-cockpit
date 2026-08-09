@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { FileText, Pencil, Plus, Trash2, Upload, Sparkles } from "lucide-react";
+import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { Resume, ResumeListResponse, ResumeType } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -39,8 +39,12 @@ const RESUME_TYPES: ResumeType[] = [
 export default function ResumesPage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Resume | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [coachResult, setCoachResult] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     name: "",
     resume_type: "Full Stack Resume" as ResumeType,
@@ -117,14 +121,103 @@ export default function ResumesPage() {
     fetchResumes();
   };
 
+  const handleUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("name", file.name.replace(/\.[^.]+$/, ""));
+      fd.append("resume_type", "Full Stack Resume");
+      await api.upload<Resume>("/resumes/upload", fd);
+      await fetchResumes();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const coachFromResume = async (resume: Resume) => {
+    setError(null);
+    setCoachResult(null);
+    try {
+      const textRes = await api.get<{ extracted_text: string }>(`/resumes/${resume.id}/text`);
+      const coach = await api.post<{
+        summary: string;
+        strengths: string[];
+        gaps: string[];
+        bullet_rewrites: string[];
+      }>("/resume-coach", {
+        resume_text: textRes.extracted_text,
+        target_role: resume.target_role || "Software Engineer",
+        years_experience: 3,
+      });
+      setCoachResult(
+        [
+          coach.summary,
+          "",
+          "Strengths:",
+          ...(coach.strengths || []).map((s) => `• ${s}`),
+          "",
+          "Gaps:",
+          ...(coach.gaps || []).map((s) => `• ${s}`),
+          "",
+          "Bullet rewrites:",
+          ...(coach.bullet_rewrites || []).map((s) => `• ${s}`),
+        ].join("\n")
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "AI coaching failed");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".pdf,.txt,.md,.docx"
+          className="hidden"
+          onChange={(e) => {
+            handleUpload(e.target.files?.[0] || null);
+            e.target.value = "";
+          }}
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          type="button"
+        >
+          <Upload className="h-4 w-4" />
+          {uploading ? "Uploading…" : "Upload PDF/DOCX/TXT"}
+        </Button>
         <Button onClick={openCreate} size="sm">
           <Plus className="h-4 w-4" />
-          Add Resume
+          Add manually
         </Button>
       </div>
+
+      {error && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {coachResult && (
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm font-medium mb-2 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" /> Gemini resume coach
+            </p>
+            <pre className="whitespace-pre-wrap text-xs text-muted-foreground">{coachResult}</pre>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <PageLoading />
@@ -132,7 +225,7 @@ export default function ResumesPage() {
         <EmptyState
           icon={FileText}
           title="No resume versions"
-          description="Manage multiple resume versions tailored for different roles."
+          description="Upload a PDF/DOCX/TXT resume or add metadata manually."
           actionLabel="Add Resume"
           onAction={openCreate}
         />
@@ -147,6 +240,11 @@ export default function ResumesPage() {
                     <Badge variant="outline" className="mt-2">
                       {resume.resume_type}
                     </Badge>
+                    {resume.has_file && (
+                      <Badge className="mt-2 ml-2" variant="secondary">
+                        {resume.original_filename || "File"}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(resume)}>
@@ -162,14 +260,22 @@ export default function ResumesPage() {
                     Target: {resume.target_role}
                   </p>
                 )}
-                {resume.skills_highlighted && (
-                  <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-                    {resume.skills_highlighted}
+                {resume.extracted_text_preview && (
+                  <p className="mt-2 text-xs text-muted-foreground line-clamp-3">
+                    {resume.extracted_text_preview}
                   </p>
                 )}
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Updated: {formatDate(resume.last_updated)}
-                </p>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Updated: {formatDate(resume.last_updated)}
+                  </p>
+                  {resume.has_extracted_text && (
+                    <Button size="sm" variant="outline" onClick={() => coachFromResume(resume)}>
+                      <Sparkles className="h-3 w-3" />
+                      AI coach
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}

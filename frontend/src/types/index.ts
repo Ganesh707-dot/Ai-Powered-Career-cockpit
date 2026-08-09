@@ -95,7 +95,9 @@ export interface JDAnalysisResponse {
   devops: string[];
   responsibilities: string[];
   keywords: string[];
-  match_score: number;
+  match_score?: number | null;
+  match_available?: boolean;
+  match_note?: string | null;
   strength_areas: string[];
   missing_skills: string[];
   resume_suggestions: string[];
@@ -178,6 +180,10 @@ export interface Resume {
   skills_highlighted?: string | null;
   notes?: string | null;
   file_path?: string | null;
+  original_filename?: string | null;
+  has_file?: boolean;
+  has_extracted_text?: boolean;
+  extracted_text_preview?: string | null;
   last_updated?: string | null;
   created_at: string;
   updated_at: string;

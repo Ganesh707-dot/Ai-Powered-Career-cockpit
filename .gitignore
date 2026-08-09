@@ -8,6 +8,8 @@ venv/
 .venv/
 env/
 backend/venv/
+backend/.venv/
+.venv/
 
 # Build outputs
 .next/

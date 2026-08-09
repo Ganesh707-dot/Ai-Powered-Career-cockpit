@@ -12,11 +12,12 @@ class ResumeBase(BaseModel):
     skills_highlighted: str | None = None
     notes: str | None = None
     file_path: str | None = None
+    original_filename: str | None = None
     last_updated: date | None = None
 
 
 class ResumeCreate(ResumeBase):
-    pass
+    extracted_text: str | None = None
 
 
 class ResumeUpdate(BaseModel):
@@ -26,6 +27,8 @@ class ResumeUpdate(BaseModel):
     skills_highlighted: str | None = None
     notes: str | None = None
     file_path: str | None = None
+    original_filename: str | None = None
+    extracted_text: str | None = None
     last_updated: date | None = None
 
 
@@ -33,6 +36,9 @@ class ResumeResponse(ResumeBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    has_file: bool = False
+    has_extracted_text: bool = False
+    extracted_text_preview: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -40,3 +46,8 @@ class ResumeResponse(ResumeBase):
 class ResumeListResponse(BaseModel):
     items: list[ResumeResponse]
     total: int
+
+
+class ResumeTextResponse(BaseModel):
+    id: int
+    extracted_text: str

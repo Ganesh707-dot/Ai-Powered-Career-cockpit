@@ -28,6 +28,8 @@ class Resume(Base):
     skills_highlighted: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     file_path: Mapped[str | None] = mapped_column(String(512))
+    original_filename: Mapped[str | None] = mapped_column(String(255))
+    extracted_text: Mapped[str | None] = mapped_column(Text)
     last_updated: Mapped[date | None] = mapped_column(Date)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now()

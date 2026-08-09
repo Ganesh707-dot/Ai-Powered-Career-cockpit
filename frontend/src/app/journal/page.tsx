@@ -235,14 +235,16 @@ export default function JournalPage() {
                 <Label>Interview Date</Label>
                 <Input type="date" {...form.register("interview_date")} />
               </div>
-              {[
-                ["questions_asked", "Questions Asked"],
-                ["my_answers", "My Answers"],
-                ["better_answers", "Better Answers"],
-                ["feedback", "Feedback Received"],
-                ["mistakes", "Mistakes Made"],
-                ["lessons_learned", "Lessons Learned"],
-              ].map(([field, label]) => (
+              {(
+                [
+                  ["questions_asked", "Questions Asked"],
+                  ["my_answers", "My Answers"],
+                  ["better_answers", "Better Answers"],
+                  ["feedback", "Feedback Received"],
+                  ["mistakes", "Mistakes Made"],
+                  ["lessons_learned", "Lessons Learned"],
+                ] as const
+              ).map(([field, label]) => (
                 <div key={field} className="space-y-2 sm:col-span-2">
                   <Label>{label}</Label>
                   <Textarea {...form.register(field)} rows={2} />

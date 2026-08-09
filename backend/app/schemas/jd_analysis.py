@@ -4,6 +4,9 @@ from pydantic import BaseModel, Field
 class JDAnalysisRequest(BaseModel):
     job_description: str = Field(..., min_length=10)
     user_skills: list[str] = Field(default_factory=list)
+    resume_text: str = ""
+    years_experience: int | None = None
+    target_role: str = ""
 
 
 class JDAnalysisResponse(BaseModel):
@@ -17,7 +20,9 @@ class JDAnalysisResponse(BaseModel):
     devops: list[str] = Field(default_factory=list)
     responsibilities: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
-    match_score: float = 0.0
+    match_score: float | None = None
+    match_available: bool = False
+    match_note: str | None = None
     strength_areas: list[str] = Field(default_factory=list)
     missing_skills: list[str] = Field(default_factory=list)
     resume_suggestions: list[str] = Field(default_factory=list)

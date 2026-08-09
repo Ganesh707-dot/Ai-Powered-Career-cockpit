@@ -14,9 +14,10 @@ CareerPilot AI follows a **decoupled full-stack architecture** with a Next.js fr
 ┌─────────────────────────────────────────────────────────────┐
 │                   FastAPI Backend (Port 8000)                │
 │  ┌──────────┐  ┌──────────┐  ┌──────────────┐  ┌─────────┐ │
-│  │ Routers  │→ │ Services │→ │ Repositories │→ │ SQLite  │ │
-│  └──────────┘  └──────────┘  └──────────────┘  └─────────┘ │
-└─────────────────────────────────────────────────────────────┘
+│  │ Routers  │→ │ Services │→ │ Repositories │→ │ DB      │ │
+│  └──────────┘  └────┬─────┘  └──────────────┘  └─────────┘ │
+│                     │ Gemini (JD / Interview / HR)          │
+└─────────────────────┴───────────────────────────────────────┘
 ```
 
 ## Backend — Clean Architecture
@@ -48,15 +49,16 @@ CareerPilot AI follows a **decoupled full-stack architecture** with a Next.js fr
 | `src/stores/` | Zustand global state (job applications) |
 | `src/types/` | Shared TypeScript interfaces matching backend schemas |
 
-## JD Intelligence — Extensibility
+## AI Layer — Google Gemini
 
-The job description analyzer uses **rule-based Python extraction** today (skill dictionaries, regex patterns). The service layer (`JDAnalysisService`) is designed as a drop-in replacement point for:
+`GeminiClient` (`backend/app/services/ai_client.py`) calls the free Google AI Studio
+`generateContent` API. Services consume structured JSON:
 
-- **Ollama** (local LLM)
-- **Google Gemini** (free tier)
-- Any OpenAI-compatible API
+- `JDAnalysisService` — JD skill extraction, match score, resume/learning tips
+- `InterviewPrepService` — dynamic question generation + HR multi-style answers
 
-No router or frontend changes required — only swap the service implementation.
+Requires `GEMINI_API_KEY`. Without it, AI routes return `503` with a clear setup message;
+CRUD/dashboard/analytics continue to work.
 
 ## Database Schema
 

@@ -1,343 +1,408 @@
-# CareerPilot AI
+# CareerPilot AI — Personal Career Operating System
 
-**A Personal Career Operating System for Software Engineers**
+Full-stack career cockpit for software engineers: track applications, analyze JDs with AI, prepare interviews, upload resumes, follow personalized learning paths, and coach with a conversational AI mentor.
 
-CareerPilot AI is a full-stack SaaS-style web application that helps developers manage their entire job search lifecycle — from tracking applications and analyzing job descriptions to preparing for interviews and measuring career progress through analytics.
-
-Built as a production-quality portfolio project demonstrating real-world full-stack engineering skills.
-
----
-
-## Why I Built This
-
-During an active job search, developers juggle spreadsheets, Notion pages, random notes, and multiple resume versions across dozens of applications. There is no single workspace designed specifically for **software engineer interview preparation**.
-
-CareerPilot AI solves this by combining:
-
-- Job application tracking (Kanban + table views)
-- Rule-based job description intelligence
-- Interview question banks with evaluation criteria
-- HR answer personalization
-- Interview journaling as a searchable knowledge base
-- Multi-version resume management
-- Learning progress tracking
-- Career analytics dashboards
-
-This is **not a demo** — it is architected and built to be used daily during a real job search.
+**Live app (recruiters):** https://careerpilot-ai-omega-khaki.vercel.app  
+**API:** https://careerpilot-api.vercel.app · **Health:** `/health` · **Swagger:** `/docs`  
+**Repo:** https://github.com/Ganesh707-dot/Ai-Powered-Career-cockpit  
+**Branch:** `career-cockpit`
 
 ---
 
-## Live Demo & Screenshots
+## Table of contents
 
-> After cloning, run locally (see [Setup](#setup--installation) below).
->
-> **Recommended:** Add 2–3 screenshots to a `docs/screenshots/` folder and link them here before sharing with recruiters:
->
-> ```
-> docs/screenshots/dashboard.png
-> docs/screenshots/jobs-kanban.png
-> docs/screenshots/jd-analysis.png
-> ```
-
-| Module | Route |
-|--------|-------|
-| Executive Dashboard | `/` |
-| Job Search Workspace | `/jobs` |
-| JD Intelligence | `/jd-analysis` |
-| Interview Prep Center | `/interview-prep` |
-| HR Answer Studio | `/hr-studio` |
-| Interview Journal | `/journal` |
-| Resume Intelligence | `/resumes` |
-| Learning Dashboard | `/learning` |
-| Analytics | `/analytics` |
+1. [Product overview](#1-product-overview)
+2. [Live demo & modules](#2-live-demo--modules)
+3. [Technical architecture](#3-technical-architecture)
+4. [AI provider layer](#4-ai-provider-layer)
+5. [Local setup](#5-local-setup)
+6. [Deployment](#6-deployment)
+7. [User experience manual](#7-user-experience-manual)
+8. [Testing guide](#8-testing-guide)
+9. [Project structure](#9-project-structure)
+10. [API reference](#10-api-reference)
+11. [Future roadmap](#11-future-roadmap)
 
 ---
 
-## Tech Stack
+## 1. Product overview
 
-### Frontend
-| Technology | Purpose |
-|------------|---------|
-| **Next.js 15** | App Router, SSR-ready React framework |
-| **React 19** | UI component library |
-| **TypeScript** | Strict typing across the entire frontend |
-| **Tailwind CSS** | Utility-first styling, dark mode |
-| **shadcn/ui** | Accessible, composable UI primitives (Radix-based) |
-| **Zustand** | Lightweight global state management |
-| **React Hook Form + Zod** | Form handling and validation |
-| **TanStack Table** | Data table rendering (Job Search) |
-| **Recharts** | Analytics charts and visualizations |
-| **Lucide Icons** | Consistent icon system |
+### Why this exists
 
-### Backend
-| Technology | Purpose |
-|------------|---------|
-| **FastAPI** | High-performance async Python API |
-| **SQLAlchemy 2.0** | ORM with declarative models |
-| **Pydantic v2** | Request/response validation and settings |
-| **SQLite** | Embedded database (zero-config, portable) |
-| **Uvicorn** | ASGI server |
+Job search for engineers usually means spreadsheets, Notion, scattered notes, and multiple resume versions. CareerPilot AI is a single **Career Operating System** for the full loop:
 
-### Architecture
-- Clean Architecture (Router → Service → Repository → Model)
-- Repository Pattern for data access
-- Feature-based modular design
-- REST API with OpenAPI/Swagger auto-docs
-- CORS-configured for local development
+Track applications → Analyze JDs → Prep interviews → Journal rounds → Manage resumes → Learn gaps → Measure progress → Get AI coaching.
+
+### What makes it “real”
+
+| Area | Behavior |
+|------|----------|
+| AI | Live Gemini (swap-ready for OpenAI/GPT) — not static Q&A banks for answers |
+| Personalization | Saved profile (skills, level, target role, resume) used across every AI feature |
+| JD match | Score only when a real profile/resume exists — no fake 0% without data |
+| UX | Latest-request wins (AbortController), cancel buttons, latency badges |
+| Deploy | Production frontend + API on Vercel |
 
 ---
 
-## Features
+## 2. Live demo & modules
 
-### 1. Executive Dashboard
-Central command center showing:
-- Total applications, today's applications, interviews scheduled
-- Offers, rejections, follow-ups due
-- Weekly application goal with progress bar
-- Recent activity feed
-- Upcoming interviews
-- Quick action shortcuts
-
-### 2. Job Search Workspace
-Full CRUD job application manager with:
-- Company, role, salary, location, work mode (Remote/Hybrid/Onsite)
-- Source tracking (LinkedIn, Naukri, Indeed, Wellfound, Instahyre, etc.)
-- Priority levels, status pipeline, tags, notes
-- Application and follow-up dates
-- **Table view** with search, filter, and sort
-- **Kanban board** with drag-friendly status columns
-
-### 3. Job Description Intelligence
-Paste any JD and get instant analysis:
-- Extracted technical skills, soft skills, databases, cloud, DevOps
-- Match score against your skill set
-- Strength areas and missing skills
-- Resume tailoring suggestions
-- Interview focus topics
-- Learning recommendations
-
-*Implemented with rule-based Python analysis — architecture ready for Ollama/Gemini integration without API changes.*
-
-### 4. Interview Preparation Center
-40+ curated questions across 12 categories:
-- HR, Behavioral, JavaScript, TypeScript, React, Next.js
-- Node.js, REST APIs, Databases, System Design, Performance, Security
-
-Each question includes:
-- Expected answer outline
-- Evaluation criteria
-- Difficulty level (Easy / Medium / Hard)
-
-### 5. HR Answer Studio
-Personalized HR interview answers for 9 common questions:
-- Tell me about yourself
-- Why leaving current company
-- Why should we hire you
-- Biggest achievement / challenge
-- Leadership, conflict resolution, career goals, salary expectations
-
-Generates **multiple answer styles** (concise, detailed, storytelling) customized with your real experience.
-
-### 6. Interview Journal
-Post-interview logging and knowledge base:
-- Company, round, interviewer, questions asked
-- Your answers vs. better answers
-- Feedback, mistakes, lessons learned
-- Confidence rating (1–10), outcome
-- Full-text search across entries
-
-### 7. Resume Intelligence
-Manage multiple resume versions:
-- React, Next.js, Angular, Full Stack, AI, Custom types
-- Target role, skills highlighted, notes, last updated date
-
-### 8. Learning Dashboard
-Track interview prep topics:
-- Categories: JavaScript, TypeScript, React, Next.js, Angular, Node.js, SQL, System Design, DSA
-- Status workflow: Planned → In Progress → Completed
-- Overall progress visualization
-
-### 9. Analytics
-Data-driven career insights with Recharts:
-- Application trends (30-day line chart)
-- Status distribution (pie chart)
-- Weekly progress (bar chart)
-- Interview conversion rate and offer rate
-- Most requested skills from your applications
-- Companies applied list
+| Module | Route | Purpose |
+|--------|-------|---------|
+| Executive Dashboard | `/` | KPIs, weekly goal, activity |
+| Job Search | `/jobs` | Applications CRUD, table + kanban |
+| JD Intelligence | `/jd-analysis` | Personalized JD ↔ profile match |
+| Interview Prep | `/interview-prep` | Gemini question packs + live answer drill |
+| HR Answer Studio | `/hr-studio` | Personalized HR answers |
+| AI Career Staff | `/mentor` | Conversational mentor (level → target role) |
+| AI Coach | `/ai-coach` | Resume coach + career insights |
+| Interview Journal | `/journal` | Round notes & lessons |
+| Resume Intelligence | `/resumes` | Upload PDF/DOCX/TXT + AI coach |
+| Learning | `/learning` | AI week-by-week roadmap → topics |
+| Analytics | `/analytics` | Trends, conversion, skills |
 
 ---
 
-## Project Structure
+## 3. Technical architecture
 
 ```
-CareerPilot-AI/
-├── backend/                    # FastAPI Python backend
-│   ├── app/
-│   │   ├── main.py             # App entry point, CORS, router registration
-│   │   ├── config.py           # Settings (Pydantic BaseSettings)
-│   │   ├── database.py         # SQLAlchemy engine, session, init_db
-│   │   ├── models/             # ORM models (Application, Journal, Resume, Learning)
-│   │   ├── schemas/            # Pydantic request/response DTOs
-│   │   ├── repositories/       # Data access layer
-│   │   ├── services/           # Business logic (JD analysis, interview prep, analytics)
-│   │   └── routers/            # API route handlers
-│   ├── seed.py                 # Sample data for demo/testing
-│   ├── requirements.txt
-│   └── .env.example
-│
-├── frontend/                   # Next.js 15 React frontend
-│   ├── src/
-│   │   ├── app/                # App Router pages (one per module)
-│   │   ├── components/
-│   │   │   ├── ui/             # shadcn-style primitives
-│   │   │   ├── layout/         # Sidebar, header, app shell
-│   │   │   └── shared/         # StatCard, EmptyState, StatusBadge, etc.
-│   │   ├── lib/                # API client, utilities
-│   │   ├── stores/             # Zustand state
-│   │   └── types/              # TypeScript interfaces
-│   ├── public/
-│   ├── package.json
-│   └── .env.example
-│
-├── docs/
-│   └── ARCHITECTURE.md         # Detailed architecture documentation
-│
-├── Makefile                    # Convenience commands
-├── LICENSE                     # MIT License
-└── README.md                   # This file
+Browser (Next.js 15)
+    │  same-origin /api/v1/*  (Next rewrites)
+    ▼
+FastAPI (/api/v1)  ── Router → Service → Repository → SQLite/Postgres
+    │
+    ▼
+LLM Provider Factory
+    ├── gemini  (default, free tier)
+    └── openai  (swap later via env)
 ```
 
+### Stack
+
+| Layer | Tech |
+|-------|------|
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind, shadcn/ui, Zustand (persist profile) |
+| Backend | FastAPI, SQLAlchemy 2, Pydantic v2, httpx |
+| AI | Gemini `gemini-2.0-flash-lite` (+ retries, cache, model fallbacks) |
+| Files | `pypdf` / `python-docx` text extraction; content stored in DB |
+| Deploy | Vercel (Next.js) + Vercel Python/Mangum (API) |
+| Optional | Docker Compose (Postgres + API), Render blueprint |
+
+### Backend layers
+
+| Layer | Location | Role |
+|-------|----------|------|
+| Routers | `backend/app/routers/` | HTTP, validation |
+| Services | `backend/app/services/` | Domain + AI |
+| LLM | `backend/app/services/llm/` | Provider factory (gemini \| openai) |
+| Repositories | `backend/app/repositories/` | DB access |
+| Models / Schemas | `backend/app/models/`, `schemas/` | ORM + DTOs |
+
+### Frontend patterns
+
+- App Router — one route per module
+- `useLatestRequest` — cancels stale AI calls so UI shows **latest** search only
+- `profile-store` (Zustand + localStorage) — personalization across pages
+- API client supports JSON + multipart upload + AbortSignal
+
+### Design principles
+
+1. **Provider-agnostic AI** — product services call `gemini_client` proxy → factory picks Gemini or OpenAI  
+2. **Personalization first** — profile/resume required for realistic match scores  
+3. **Fast free-tier** — short prompts, token caps, 3‑min response cache, single mentor request (no stream+chat double hit)  
+4. **Clean API** — `/api/v1` versioning, OpenAPI at `/docs`
+
 ---
 
-## API Endpoints
+## 4. AI provider layer
 
-Base URL: `http://localhost:8000/api/v1`
+Default: **Gemini free tier**.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/dashboard` | Dashboard KPIs and activity |
-| GET | `/analytics` | Analytics data for charts |
-| GET/POST | `/applications` | List / create applications |
-| GET/PATCH/DELETE | `/applications/{id}` | Read / update / delete |
-| GET/POST | `/journal` | Interview journal entries |
-| GET/POST | `/resumes` | Resume versions |
-| GET/POST | `/learning` | Learning topics |
-| POST | `/jd-analysis` | Analyze a job description |
-| POST | `/interview-prep` | Generate interview questions |
-| POST | `/hr-answers` | Generate HR answer styles |
-| GET | `/hr-questions` | List available HR questions |
-| GET | `/interview-categories` | List question categories |
-| GET | `/health` | Health check |
+To switch to OpenAI later (no feature rewrites):
 
-Full interactive docs: **http://localhost:8000/docs**
+```bash
+# backend env
+AI_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+# optional OpenAI-compatible gateway:
+# OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
+| Setting | Purpose |
+|---------|---------|
+| `AI_PROVIDER` | `gemini` (default) or `openai` |
+| `GEMINI_API_KEY` | Google AI Studio key |
+| `GEMINI_MODEL` | e.g. `gemini-2.0-flash-lite` |
+| `OPENAI_API_KEY` | Used when provider=openai |
+| `OPENAI_MODEL` | e.g. `gpt-4o-mini` |
+
+Status endpoint: `GET /api/v1/ai-status`
 
 ---
 
-## Setup & Installation
+## 5. Local setup
 
 ### Prerequisites
 
-- **Python 3.10+**
-- **Node.js 18+** and **npm** (for frontend only)
+- Python 3.12+
+- Node.js 18+
+- Gemini key: https://aistudio.google.com/apikey
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/careerpilot-ai.git
-cd careerpilot-ai
-```
-
-### 2. Backend setup
+### Backend
 
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env            # optional
-python seed.py                  # load sample data (6 apps, journals, resumes)
+cp .env.example .env
+# set GEMINI_API_KEY=...
 uvicorn app.main:app --reload --port 8000
 ```
 
-Backend runs at **http://localhost:8000**
-
-### 3. Frontend setup
-
-Open a new terminal:
+### Frontend
 
 ```bash
 cd frontend
 npm install
 cp .env.example .env.local
+# NEXT_PUBLIC_API_URL=/api/v1
+# BACKEND_URL=http://localhost:8000
 npm run dev
 ```
 
-Frontend runs at **http://localhost:3000**
+Open http://localhost:3000
 
-### Quick commands (Makefile)
+### Docker (API + Postgres)
 
 ```bash
-make install-backend    # Create venv + install Python deps
-make install-frontend   # npm install
-make seed               # Load sample data
-make backend            # Start FastAPI server
-make frontend           # Start Next.js dev server
+export GEMINI_API_KEY=your_key
+docker compose up --build
 ```
 
 ---
 
-## What This Project Demonstrates
+## 6. Deployment
 
-For recruiters and hiring managers reviewing this repository:
+| Service | Platform | URL |
+|---------|----------|-----|
+| Frontend | Vercel `careerpilot-ai` | https://careerpilot-ai-omega-khaki.vercel.app |
+| Backend | Vercel `careerpilot-api` | https://careerpilot-api.vercel.app |
 
-| Skill Area | Evidence in Codebase |
-|------------|---------------------|
-| **Full-Stack Development** | Complete Next.js + FastAPI application with 9 feature modules |
-| **Clean Architecture** | Repository pattern, service layer, separation of concerns |
-| **TypeScript Proficiency** | Strict types, shared interfaces, Zod validation |
-| **Modern React** | React 19, App Router, client/server components, hooks |
-| **API Design** | RESTful endpoints, Pydantic schemas, OpenAPI docs, proper HTTP status codes |
-| **Database Modeling** | SQLAlchemy ORM, relationships, enums, migrations-ready structure |
-| **UI/UX Design** | Dark-mode SaaS UI inspired by Linear/Vercel, responsive layout, empty/loading states |
-| **State Management** | Zustand store + React Hook Form for complex forms |
-| **Data Visualization** | Recharts integration for analytics dashboards |
-| **Business Logic** | Rule-based JD parser, interview question bank, HR answer templating |
-| **Production Practices** | Error handling, CORS, env config, .gitignore, seed data, documentation |
+Frontend rewrites `/api/v1/*` → `BACKEND_URL`.
+
+Required API env (Vercel):
+
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL=gemini-2.0-flash-lite`
+- `CORS_ORIGINS=https://careerpilot-ai-omega-khaki.vercel.app,http://localhost:3000`
+- `DATABASE_URL` (sqlite or Postgres)
+- `SEED_ON_STARTUP=true`
+- `ENVIRONMENT=production`
+
+Redeploy helper: `scripts/set-gemini-key.sh`
+
+Also present: `render.yaml`, `docker-compose.yml`, `backend/Dockerfile`.
 
 ---
 
-## Future Enhancements
+## 7. User experience manual
 
-- [ ] Ollama / Gemini integration for AI-powered JD analysis
-- [ ] User authentication (JWT)
-- [ ] PostgreSQL migration for production deployment
-- [ ] Docker Compose for one-command setup
+### First-time setup (1 minute)
+
+1. Open the live app.  
+2. Click **Set up profile** in the header.  
+3. Enter:
+   - Name  
+   - Current level (e.g. Mid-level 2–4 YOE)  
+   - Target role (e.g. Senior Full Stack Developer)  
+   - Years of experience  
+   - Skills (comma-separated)  
+   - Optional: link an uploaded resume  
+4. Click **Save personalized profile**.  
+
+This profile is stored in the browser and reused by JD match, interview prep, HR, mentor, and learning.
+
+### Recommended daily flow
+
+| Step | Where | What to do |
+|------|-------|------------|
+| 1 | Resumes | Upload PDF/DOCX/TXT → optional **AI coach** |
+| 2 | Profile | Link that resume + confirm skills |
+| 3 | Jobs | Add applications; update status on kanban |
+| 4 | JD Intelligence | Paste JD → **Get personalized match** |
+| 5 | Interview Prep | Generate pack (3 = fastest) → expand → **Live answer drill** |
+| 6 | HR Studio | Pick question → generate answers from your experience |
+| 7 | AI Career Staff | Chat: “Assess me for Senior Full Stack in 6 weeks” |
+| 8 | Learning | **Generate AI learning path** → work topics to Completed |
+| 9 | Journal | Log each interview round |
+| 10 | Analytics / Dashboard | Review conversion and activity |
+
+### Feature tips
+
+**JD Intelligence**
+
+- Match % needs skills **or** resume text. Without a profile, analyze is blocked (no fake 0%).  
+- Select a resume with “file ready” for deeper matching.
+
+**Interview Prep**
+
+- Use difficulty + count (3/6/9/12).  
+- Click Generate twice quickly — only the **latest** pack is shown.  
+- Practice answers in **Live answer drill** for Gemini scoring.
+
+**AI Career Staff**
+
+- Uses your profile (level, role, skills, resume excerpt).  
+- Ask for assessment, weekly plans, or interview drills.
+
+**Rate limits (Gemini free tier)**
+
+- ~20 requests/minute. If you see “Rate limited… wait ~Xs”, wait and retry.  
+- Identical recent requests may be served from a short server cache (faster).
+
+---
+
+## 8. Testing guide
+
+### Smoke (production)
+
+```bash
+curl -s https://careerpilot-api.vercel.app/health
+curl -s https://careerpilot-api.vercel.app/api/v1/ai-status
+```
+
+Expect: `"configured": true`, provider gemini (or openai if swapped).
+
+### AI functional checks
+
+1. **Profile** — save skills; header shows “Personalized for …”  
+2. **JD** — with skills filled, paste JD → match % between 0–100 and note explains scoring  
+3. **JD without skills** — button disabled / clear error (not a silent 0%)  
+4. **Interview Prep** — generate React pack (count 3); change skills and regenerate → only second result  
+5. **Mock drill** — answer a question → score + improvements  
+6. **HR** — generate answers; cancel in-flight if needed  
+7. **Mentor** — short coaching reply using your target role  
+8. **Resume upload** — PDF/TXT appears with preview; AI coach runs  
+9. **Learning path** — generate 6-week plan → topics appear on board  
+10. **Jobs CRUD** — create/update/delete application  
+
+### Regression / race condition
+
+- Start Generate on Interview Prep, immediately change filters and Generate again.  
+- UI must not flash older results after the newer one arrives.
+
+### Performance expectations (approx.)
+
+| Call | Typical |
+|------|---------|
+| JD analysis (with profile) | ~1.5–4s |
+| Interview pack (3 Qs) | ~2–5s |
+| Mentor chat | ~2–4s |
+
+Cold starts (Vercel free) may add 1–3s.
+
+---
+
+## 9. Project structure
+
+```
+Ai-Powered-Career-cockpit/
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── config.py
+│   │   ├── database.py
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   ├── repositories/
+│   │   ├── services/
+│   │   │   ├── ai_client.py          # Gemini + proxy
+│   │   │   ├── llm/                  # factory, openai provider, errors
+│   │   │   ├── jd_analysis_service.py
+│   │   │   ├── interview_prep_service.py
+│   │   │   ├── mentor_service.py
+│   │   │   ├── career_coach_service.py
+│   │   │   ├── learning_path_service.py
+│   │   │   └── file_extract.py
+│   │   └── routers/
+│   ├── api/index.py                  # Vercel Mangum entry
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/app/                      # routes (modules)
+│   ├── src/components/
+│   ├── src/stores/profile-store.ts   # personalized profile
+│   ├── src/lib/api.ts
+│   └── src/lib/use-latest-request.ts
+├── docs/ARCHITECTURE.md
+├── docker-compose.yml
+├── render.yaml
+├── scripts/set-gemini-key.sh
+└── README.md                         # this file
+```
+
+---
+
+## 10. API reference
+
+Base: `/api/v1`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health (root) |
+| GET | `/ai-status` | Provider + features |
+| GET | `/dashboard` | Dashboard KPIs |
+| GET | `/analytics` | Charts data |
+| CRUD | `/applications` | Job applications |
+| CRUD | `/journal` | Interview journal |
+| CRUD | `/resumes` | Resume metadata |
+| POST | `/resumes/upload` | Multipart file upload |
+| GET | `/resumes/{id}/text` | Extracted resume text |
+| CRUD | `/learning` | Learning topics |
+| POST | `/jd-analysis` | Personalized JD analysis |
+| POST | `/interview-prep` | Question pack |
+| POST | `/mock-interview` | Score an answer |
+| POST | `/hr-answers` | HR answer styles |
+| GET | `/hr-questions` | HR question list |
+| GET | `/interview-categories` | Categories |
+| POST | `/mentor/chat` | Career mentor |
+| POST | `/mentor/stream` | SSE mentor (optional) |
+| POST | `/resume-coach` | Resume coaching |
+| POST | `/career-insights` | Strategy insights |
+| POST | `/learning/generate-path` | AI roadmap (+ persist topics) |
+
+Interactive docs: https://careerpilot-api.vercel.app/docs
+
+---
+
+## 11. Future roadmap
+
+- [x] Live Gemini AI (JD, prep, HR, mentor, resume, learning)
+- [x] Personalized profile across modules
+- [x] Realistic JD match (profile/resume required)
+- [x] LLM provider swap (`gemini` ↔ `openai`)
+- [x] Production deploy (Vercel)
+- [ ] JWT auth + multi-user tenancy
+- [ ] Managed Postgres (Neon) for durable multi-instance data
+- [ ] Alembic migrations
 - [ ] Email follow-up reminders
-- [ ] Chrome extension to save jobs from LinkedIn
-- [ ] PDF resume upload and parsing
-- [ ] Deployment to Vercel (frontend) + Railway/Render (backend)
+- [ ] Chrome extension to save jobs
 
 ---
 
 ## Author
 
-**Your Name** — Senior Full Stack Developer
+**Ganesh** — Full Stack Developer  
 
-- GitHub: [@your-username](https://github.com/your-username)
-- LinkedIn: [Your LinkedIn](https://linkedin.com/in/your-profile)
-- Portfolio: [your-portfolio.com](https://your-portfolio.com)
-
-> Replace the links above with your actual profiles before publishing.
+- GitHub: [@Ganesh707-dot](https://github.com/Ganesh707-dot)  
+- Live demo: [CareerPilot AI](https://careerpilot-ai-omega-khaki.vercel.app)  
+- Repository: [Ai-Powered-Career-cockpit](https://github.com/Ganesh707-dot/Ai-Powered-Career-cockpit)
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-<p align="center">
-  Built with Next.js, FastAPI, and TypeScript — designed for developers, by a developer.
-</p>
+MIT — see [LICENSE](LICENSE).
