@@ -3,7 +3,6 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar } from "./sidebar";
 import { Header, MobileNav } from "./header";
-import { SetupBanner } from "./setup-banner";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,7 +11,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <div className="lg:pl-[260px] flex flex-1 flex-col min-h-0 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
           <Header />
-          <SetupBanner />
           <main className="flex-1 p-3 sm:p-5 lg:p-8 page-enter min-w-0 overflow-x-hidden">
             {children}
           </main>

@@ -4,6 +4,8 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Briefcase,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   FileText,
   MessageCircle,
@@ -14,9 +16,10 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { isAbortError, useLatestRequest } from "@/lib/use-latest-request";
 import { useProfileStore } from "@/stores/profile-store";
-import type { DiscoveredJob, JobMentorChatResponse } from "@/types";
+import type { DiscoveredJob, JobMentorChatResponse, ProfileUpdates } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -27,11 +30,45 @@ interface ChatMessage {
   content: string;
 }
 
+const WELCOME =
+  "Tell me what you want — role, salary, remote or onsite, stack. Paste resume text anytime and I'll pick up skills and intent from our chat.";
+
 const STARTERS = [
-  "What fits my resume best around 15 LPA?",
-  "I want fully remote — what should I target?",
-  "Show me strong React roles in Bangalore",
+  "Senior React roles, 15+ LPA, Bangalore",
+  "Fully remote full-stack, fintech preferred",
+  "Paste skills: React, Node, 3 YOE — match me",
 ];
+
+function applyProfileUpdates(
+  profile: ReturnType<typeof useProfileStore.getState>,
+  updates: ProfileUpdates | null | undefined
+) {
+  if (!updates) return;
+  const patch: Record<string, unknown> = { onboardingDone: true };
+  if (updates.target_role) patch.targetRole = updates.target_role;
+  if (updates.years_experience != null) patch.yearsExperience = updates.years_experience;
+  if (updates.min_salary_lpa != null) patch.minSalaryLPA = updates.min_salary_lpa;
+  if (updates.max_salary_lpa != null) patch.maxSalaryLPA = updates.max_salary_lpa;
+  if (updates.work_mode) patch.workModePref = updates.work_mode;
+  if (updates.preferred_locations?.length) {
+    patch.preferredLocations = updates.preferred_locations.join(", ");
+  }
+  if (updates.skills?.length) {
+    const existing = profile.skillsList();
+    const merged = [...existing, ...updates.skills].filter(
+      (s, i, arr) => arr.findIndex((x) => x.toLowerCase() === s.toLowerCase()) === i
+    );
+    patch.skills = merged.join(", ");
+  }
+  profile.setProfile(patch as Parameters<typeof profile.setProfile>[0]);
+  if (updates.resume_snippet?.trim()) {
+    profile.setResume(
+      profile.resumeId,
+      profile.resumeName || "From chat",
+      updates.resume_snippet.slice(0, 5000)
+    );
+  }
+}
 
 interface JobMentorChatProps {
   onJobsUpdate: (jobs: DiscoveredJob[], total: number) => void;
@@ -43,10 +80,12 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const [booting, setBooting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchSummary, setSearchSummary] = useState("");
   const [resumeInsight, setResumeInsight] = useState<string | null>(null);
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [showResume, setShowResume] = useState(false);
+  const [resumeDraft, setResumeDraft] = useState(profile.resumeExcerpt);
   const bottomRef = useRef<HTMLDivElement>(null);
   const latest = useLatestRequest();
 
@@ -61,10 +100,10 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
             profile.resumeName,
             data.extracted_text.slice(0, 5000)
           );
+          setResumeDraft(data.extracted_text.slice(0, 5000));
         }
       })
       .catch(() => undefined);
-    // Only re-run when resume id changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.resumeId]);
 
@@ -91,6 +130,18 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
     [profile]
   );
 
+  const handleMentorResponse = useCallback(
+    (res: JobMentorChatResponse) => {
+      setSearchSummary(res.search_summary);
+      setResumeInsight(res.resume_insight);
+      setKeywords(res.keywords || []);
+      applyProfileUpdates(useProfileStore.getState(), res.profile_updates);
+      onJobsUpdate(res.jobs, res.total_matches);
+      return res.reply;
+    },
+    [onJobsUpdate]
+  );
+
   const callMentor = useCallback(
     async (history: ChatMessage[], signal?: AbortSignal) => {
       const res = await api.post<JobMentorChatResponse>(
@@ -98,35 +149,14 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
         buildPayload(history),
         { signal }
       );
-      setSearchSummary(res.search_summary);
-      setResumeInsight(res.resume_insight);
-      onJobsUpdate(res.jobs, res.total_matches);
-      return res.reply;
+      return handleMentorResponse(res);
     },
-    [buildPayload, onJobsUpdate]
+    [buildPayload, handleMentorResponse]
   );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, thinking]);
-
-  useEffect(() => {
-    const { signal, isCurrent } = latest.begin();
-    (async () => {
-      try {
-        const reply = await callMentor([], signal);
-        if (!isCurrent()) return;
-        setMessages([{ role: "assistant", content: reply }]);
-      } catch (err) {
-        if (!isAbortError(err) && isCurrent()) {
-          setError(err instanceof ApiError ? err.message : "Could not reach job mentor");
-        }
-      } finally {
-        if (isCurrent()) setBooting(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const send = async (text: string) => {
     const trimmed = text.trim();
@@ -153,6 +183,14 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
     }
   };
 
+  const saveResumeDraft = () => {
+    const text = resumeDraft.trim();
+    if (text.length >= 40) {
+      profile.setResume(profile.resumeId, profile.resumeName || "Pasted resume", text.slice(0, 5000));
+    }
+    setShowResume(false);
+  };
+
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     send(input);
@@ -172,7 +210,7 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
               <h2 className="font-semibold text-base">Job mentor</h2>
             </div>
             <p className="mt-2 text-sm text-muted-foreground max-w-lg leading-relaxed">
-              Natural language search — salary, remote, stack. Resume-aware matching.
+              Conversation drives everything — intent, keywords, resume, and matches. No forms required.
             </p>
           </div>
           <Badge
@@ -180,16 +218,21 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
             className="shrink-0 text-[10px] gap-1 rounded-full"
           >
             <FileText className="h-3 w-3" />
-            {hasResume ? "Resume on" : "No resume"}
+            {hasResume ? "Resume linked" : "Add resume"}
           </Badge>
         </div>
-        {(searchSummary || resumeInsight) && (
+        {(searchSummary || resumeInsight || keywords.length > 0) && (
           <div className="mt-4 flex flex-wrap gap-2">
             {searchSummary && (
               <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs text-primary">
                 {searchSummary}
               </span>
             )}
+            {keywords.map((k) => (
+              <Badge key={k} variant="secondary" className="text-[10px] font-normal">
+                {k}
+              </Badge>
+            ))}
             {resumeInsight && (
               <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400">
                 {resumeInsight}
@@ -201,100 +244,119 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
 
       <div className="flex flex-1 flex-col min-h-0">
         <div className="flex-1 overflow-y-auto touch-scroll px-4 py-5 sm:px-6 space-y-4 scrollbar-thin">
-            {booting && (
-              <p className="text-sm text-muted-foreground animate-pulse">Getting context…</p>
-            )}
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "flex gap-2.5 animate-fade-in",
-                  msg.role === "user" ? "flex-row-reverse" : "flex-row"
-                )}
-              >
-                <div
-                  className={cn(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                    msg.role === "user" ? "bg-secondary" : "bg-primary/15"
-                  )}
-                >
-                  {msg.role === "user" ? (
-                    <User className="h-4 w-4" />
-                  ) : (
-                    <MessageCircle className="h-4 w-4 text-primary" />
-                  )}
-                </div>
-                <div
-                  className={cn(
-                    "max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted/60 border border-border/50 rounded-bl-sm"
-                  )}
-                >
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-            {thinking && (
-              <div className="flex gap-2.5 pl-1">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15">
-                  <MessageCircle className="h-4 w-4 text-primary animate-pulse" />
-                </div>
-                <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-border/50 bg-muted/40 px-4 py-3">
-                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:150ms]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:300ms]" />
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          {!booting && messages.length <= 1 && (
-            <div className="flex flex-wrap gap-2 px-4 pb-2 sm:px-5">
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => send(s)}
-                  className="rounded-full border border-border bg-background/60 px-3 py-1.5 text-xs text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground active:scale-95"
-                >
-                  {s}
-                </button>
-              ))}
+          {messages.length === 0 && !thinking && (
+            <div className="rounded-xl border border-border/50 bg-muted/30 px-4 py-4 text-sm text-muted-foreground leading-relaxed animate-fade-in">
+              {WELCOME}
             </div>
           )}
-
-          {error && (
-            <p className="px-4 pb-2 text-xs text-destructive sm:px-5">{error}</p>
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={cn(
+                "flex gap-2.5 animate-fade-in",
+                msg.role === "user" ? "flex-row-reverse" : "flex-row"
+              )}
+            >
+              <div
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                  msg.role === "user" ? "bg-secondary" : "bg-primary/15"
+                )}
+              >
+                {msg.role === "user" ? (
+                  <User className="h-4 w-4" />
+                ) : (
+                  <MessageCircle className="h-4 w-4 text-primary" />
+                )}
+              </div>
+              <div
+                className={cn(
+                  "max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
+                  msg.role === "user"
+                    ? "bg-primary text-primary-foreground rounded-br-sm"
+                    : "bg-muted/60 border border-border/50 rounded-bl-sm"
+                )}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          {thinking && (
+            <div className="flex gap-2.5 pl-1">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15">
+                <MessageCircle className="h-4 w-4 text-primary animate-pulse" />
+              </div>
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm border border-border/50 bg-muted/40 px-4 py-3">
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:300ms]" />
+              </div>
+            </div>
           )}
+          <div ref={bottomRef} />
+        </div>
 
-          <form
-            onSubmit={onSubmit}
-            className="flex gap-2 border-t border-border/60 p-4 sm:p-5 bg-background/60 backdrop-blur-sm"
+        {messages.length === 0 && (
+          <div className="flex flex-wrap gap-2 px-4 pb-2 sm:px-5">
+            {STARTERS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => send(s)}
+                className="rounded-full border border-border bg-background/60 px-3 py-2 text-xs text-muted-foreground transition-all duration-200 hover:border-primary/40 hover:text-foreground active:scale-95"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {error && <p className="px-4 pb-2 text-xs text-destructive sm:px-5">{error}</p>}
+
+        <div className="border-t border-border/60 bg-background/60 backdrop-blur-sm safe-bottom">
+          <button
+            type="button"
+            onClick={() => setShowResume((v) => !v)}
+            className="flex w-full items-center justify-between px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
+            <span className="inline-flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" />
+              Paste resume snippet (optional)
+            </span>
+            {showResume ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+          {showResume && (
+            <div className="px-4 pb-3 space-y-2 animate-fade-in">
+              <Textarea
+                value={resumeDraft}
+                onChange={(e) => setResumeDraft(e.target.value)}
+                placeholder="Paste experience, skills, projects from your resume…"
+                className="min-h-[100px] text-base md:text-sm rounded-xl resize-none"
+              />
+              <Button size="sm" variant="secondary" className="rounded-lg" onClick={saveResumeDraft}>
+                Use for matching
+              </Button>
+            </div>
+          )}
+          <form onSubmit={onSubmit} className="flex gap-2 p-4 pt-0 sm:p-5 sm:pt-0">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={
-                hasResume
-                  ? "e.g. remote fintech, 18 LPA, leans on my React work…"
-                  : "Tell me what you're hunting for…"
-              }
-              disabled={thinking || booting}
+              placeholder="Describe your ideal role, salary, stack…"
+              disabled={thinking}
               className="rounded-xl h-11 bg-muted/40 border-border/60 focus-visible:ring-primary/30"
             />
             <Button
               type="submit"
               size="icon"
-              disabled={thinking || booting || !input.trim()}
+              disabled={thinking || !input.trim()}
               className="shrink-0 h-11 w-11 rounded-xl"
             >
               <Send className="h-4 w-4" />
             </Button>
           </form>
         </div>
+      </div>
     </div>
   );
 }

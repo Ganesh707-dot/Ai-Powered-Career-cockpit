@@ -15,7 +15,6 @@ export function Header() {
   const title = pageTitles[pathname] || "CareerPilot AI";
   const description = pageDescriptions[pathname];
   const profile = useProfileStore();
-  const ready = profile.isReady();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -49,11 +48,6 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {!ready && (
-              <span className="hidden md:inline-flex text-[10px] font-medium text-amber-400/90 bg-amber-400/10 px-2 py-1 rounded-full">
-                Complete profile
-              </span>
-            )}
             <ProfileSheet />
             <Button asChild size="sm" className="rounded-lg shadow-sm shadow-primary/20">
               <Link href="/jobs?action=new">
@@ -70,7 +64,7 @@ export function Header() {
           </div>
         )}
 
-        {ready && (
+        {profile.isReady() && (
           <div className="hidden md:block lg:hidden border-t border-border/40 px-4 py-1.5">
             <p className="text-[10px] text-muted-foreground truncate">
               {profile.minSalaryLPA}–{profile.maxSalaryLPA} LPA · {profile.targetRole}

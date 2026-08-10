@@ -10,7 +10,6 @@ import {
   type JobPortal,
   type WorkModePref,
 } from "@/stores/profile-store";
-import { useUIStore } from "@/stores/ui-store";
 import { PORTAL_META } from "@/lib/job-portals";
 import type { Resume, ResumeListResponse } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -30,14 +29,7 @@ const ALL_PORTALS = Object.keys(PORTAL_META) as JobPortal[];
 
 export function ProfileSheet() {
   const profile = useProfileStore();
-  const { profileOpen, setProfileOpen } = useUIStore();
-  const [localOpen, setLocalOpen] = useState(false);
-  const open = profileOpen || localOpen;
-
-  const setOpen = (next: boolean) => {
-    setLocalOpen(next);
-    setProfileOpen(next);
-  };
+  const [open, setOpen] = useState(false);
 
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [tab, setTab] = useState<"profile" | "prefs">("profile");
@@ -113,7 +105,6 @@ export function ProfileSheet() {
 
   const save = () => {
     profile.setProfile({ ...draft, onboardingDone: true });
-    localStorage.setItem("careerpilot-setup-banner-dismissed", "1");
     setOpen(false);
   };
 

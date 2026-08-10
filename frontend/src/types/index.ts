@@ -83,6 +83,17 @@ export interface InferredSearchIntent {
   natural_summary: string;
 }
 
+export interface ProfileUpdates {
+  target_role?: string | null;
+  skills?: string[];
+  years_experience?: number | null;
+  min_salary_lpa?: number | null;
+  max_salary_lpa?: number | null;
+  preferred_locations?: string[];
+  work_mode?: string | null;
+  resume_snippet?: string | null;
+}
+
 export interface JobMentorChatResponse {
   reply: string;
   search_summary: string;
@@ -91,6 +102,8 @@ export interface JobMentorChatResponse {
   total_matches: number;
   resume_used: boolean;
   resume_insight: string | null;
+  keywords: string[];
+  profile_updates: ProfileUpdates | null;
 }
 
 export interface DashboardStats {

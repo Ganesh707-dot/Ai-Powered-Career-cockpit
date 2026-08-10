@@ -15,6 +15,18 @@ class InferredSearchIntent(BaseModel):
     natural_summary: str = ""
 
 
+class ProfileUpdates(BaseModel):
+    """Extracted from conversation — synced to client profile silently."""
+    target_role: str | None = None
+    skills: list[str] = Field(default_factory=list)
+    years_experience: int | None = None
+    min_salary_lpa: float | None = None
+    max_salary_lpa: float | None = None
+    preferred_locations: list[str] = Field(default_factory=list)
+    work_mode: str | None = None
+    resume_snippet: str | None = None
+
+
 class JobMentorChatRequest(BaseModel):
     messages: list[MentorMessage] = Field(default_factory=list)
     display_name: str = ""
@@ -40,3 +52,5 @@ class JobMentorChatResponse(BaseModel):
     total_matches: int = 0
     resume_used: bool = False
     resume_insight: str | None = None
+    keywords: list[str] = Field(default_factory=list)
+    profile_updates: ProfileUpdates | None = None

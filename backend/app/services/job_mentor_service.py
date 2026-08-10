@@ -7,6 +7,7 @@ from app.schemas.job_mentor import (
     InferredSearchIntent,
     JobMentorChatRequest,
     JobMentorChatResponse,
+    ProfileUpdates,
 )
 from app.services.ai_client import GeminiClient, gemini_client
 from app.services.job_discovery_service import JobDiscoveryService
@@ -21,20 +22,33 @@ Rules:
 - Honest but encouraging. One clarifying question only if truly stuck.
 - Keep `reply` under ~120 words — conversational, not a report.
 
-Also infer search criteria from the latest message + history + profile + resume.
+Also infer search criteria AND profile facts from conversation + resume text.
 Return JSON with exactly these keys:
 {
-  "reply": "your conversational reply",
+  "reply": "conversational reply, under ~120 words",
   "search_summary": "one casual sentence of what you'll look for",
   "target_role": "string",
   "min_salary_lpa": number or null,
   "max_salary_lpa": number or null,
   "preferred_locations": ["city or Remote"],
   "work_mode": "Any|Remote|Hybrid|Onsite",
-  "sources": ["LinkedIn","Naukri",...] or empty to keep current,
-  "skills_emphasis": ["skills to weight from conversation"],
-  "resume_insight": "one human line about their resume strengths for job hunt, or null"
-}"""
+  "sources": [] or portal names,
+  "skills_emphasis": ["skills from conversation"],
+  "keywords": ["job search keywords, max 8"],
+  "resume_insight": "one line about resume fit or null",
+  "profile_updates": {
+    "target_role": "string or null if unchanged",
+    "skills": ["merge new skills mentioned"],
+    "years_experience": number or null,
+    "min_salary_lpa": number or null,
+    "max_salary_lpa": number or null,
+    "preferred_locations": [],
+    "work_mode": "string or null",
+    "resume_snippet": "if user pasted resume text in chat, extract key excerpt max 500 chars else null"
+  }
+}
+
+If messages is empty, return reply asking what they want — do NOT assume preferences."""
 
 
 class JobMentorService:
@@ -48,7 +62,23 @@ class JobMentorService:
 
     def chat(self, request: JobMentorChatRequest) -> JobMentorChatResponse:
         has_resume = len(request.resume_excerpt.strip()) >= 40
-        intent, reply, resume_insight = self._infer_intent(request, has_resume)
+
+        if not request.messages:
+            return JobMentorChatResponse(
+                reply=(
+                    "What kind of role are you aiming for? Tell me salary, location, stack — "
+                    "or paste a resume snippet and I'll read it."
+                ),
+                search_summary="",
+                inferred_intent=InferredSearchIntent(),
+                jobs=[],
+                total_matches=0,
+                resume_used=has_resume,
+            )
+
+        intent, reply, resume_insight, keywords, profile_updates = self._infer_intent(
+            request, has_resume
+        )
         discovery_req = self._to_discovery(request, intent)
         discovery = self.discovery.discover(discovery_req)
 
@@ -60,13 +90,25 @@ class JobMentorService:
             total_matches=discovery.total,
             resume_used=has_resume,
             resume_insight=resume_insight,
+            keywords=keywords,
+            profile_updates=profile_updates,
         )
 
     def _infer_intent(
         self, request: JobMentorChatRequest, has_resume: bool
-    ) -> tuple[InferredSearchIntent, str, str | None]:
+    ) -> tuple[InferredSearchIntent, str, str | None, list[str], ProfileUpdates | None]:
+        if not request.messages:
+            return (
+                InferredSearchIntent(),
+                "What kind of role are you aiming for? Tell me salary, location, stack — or paste a resume snippet.",
+                None,
+                [],
+                None,
+            )
+
         if not self.client.enabled:
-            return self._fallback_intent(request, has_resume)
+            intent, reply, insight = self._fallback_intent(request, has_resume)
+            return intent, reply, insight, self._extract_keywords(request), None
 
         history = request.messages[-10:]
         last_user = ""
@@ -101,9 +143,10 @@ Latest user message: {last_user or '(start conversation)'}
 """
 
         try:
-            data = self.client.generate_json(SYSTEM, prompt, temperature=0.55, max_output_tokens=900)
+            data = self.client.generate_json(SYSTEM, prompt, temperature=0.55, max_output_tokens=1000)
         except Exception:
-            return self._fallback_intent(request, has_resume)
+            intent, reply, insight = self._fallback_intent(request, has_resume)
+            return intent, reply, insight, self._extract_keywords(request), None
 
         reply = str(data.get("reply") or "").strip()
         if not reply:
@@ -123,11 +166,56 @@ Latest user message: {last_user or '(start conversation)'}
         if resume_insight:
             resume_insight = str(resume_insight).strip()
 
-        return intent, reply, resume_insight
+        keywords = [str(k) for k in (data.get("keywords") or [])][:8]
+        profile_updates = self._parse_profile_updates(data.get("profile_updates"))
+
+        return intent, reply, resume_insight, keywords, profile_updates
+
+    @staticmethod
+    def _parse_profile_updates(raw: object | None) -> ProfileUpdates | None:
+        if not raw or not isinstance(raw, dict):
+            return None
+        skills = [str(s) for s in (raw.get("skills") or []) if str(s).strip()]
+        snippet = raw.get("resume_snippet")
+        has_any = (
+            skills
+            or raw.get("target_role")
+            or raw.get("years_experience") is not None
+            or raw.get("min_salary_lpa") is not None
+            or raw.get("work_mode")
+            or snippet
+        )
+        if not has_any:
+            return None
+        return ProfileUpdates(
+            target_role=str(raw["target_role"]) if raw.get("target_role") else None,
+            skills=skills,
+            years_experience=int(raw["years_experience"])
+            if raw.get("years_experience") is not None
+            else None,
+            min_salary_lpa=float(raw["min_salary_lpa"])
+            if raw.get("min_salary_lpa") is not None
+            else None,
+            max_salary_lpa=float(raw["max_salary_lpa"])
+            if raw.get("max_salary_lpa") is not None
+            else None,
+            preferred_locations=[str(l) for l in (raw.get("preferred_locations") or [])],
+            work_mode=str(raw["work_mode"]) if raw.get("work_mode") else None,
+            resume_snippet=str(snippet)[:500] if snippet else None,
+        )
+
+    @staticmethod
+    def _extract_keywords(request: JobMentorChatRequest) -> list[str]:
+        words: list[str] = []
+        for msg in request.messages:
+            if msg.role == "user":
+                words.extend(msg.content.lower().split())
+        stop = {"i", "a", "the", "and", "for", "want", "need", "looking", "in", "at", "my"}
+        return list(dict.fromkeys(w for w in words if len(w) > 2 and w not in stop))[:8]
 
     def _fallback_intent(
         self, request: JobMentorChatRequest, has_resume: bool
-    ) -> tuple[InferredSearchIntent, str, str | None]:
+    ) -> tuple[InferredSearchIntent, str, str | None, list[str], ProfileUpdates | None]:
         last = ""
         for msg in reversed(request.messages):
             if msg.role == "user":
@@ -160,7 +248,7 @@ Latest user message: {last_user or '(start conversation)'}
             else "Link your resume in profile so I can match on your real experience, not just keywords."
         )
         intent.natural_summary = intent.natural_summary or self._default_summary(intent)
-        return intent, reply, insight
+        return intent, reply, insight, self._extract_keywords(request), None
 
     def _fallback_reply(self, request: JobMentorChatRequest, has_resume: bool) -> str:
         name = request.display_name.split()[0] if request.display_name else "Hey"
