@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, X } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { brand, isMobileMoreRoute, mobileTabs, navGroups } from "@/lib/navigation";
+import { isMobileMoreRoute, mobileTabs, navGroups } from "@/lib/navigation";
 import { MobileTabIcon } from "@/components/mobile/mobile-tab-icon";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetTitle, SheetBottomHeader } from "@/components/ui/sheet";
 import { useProfileStore } from "@/stores/profile-store";
 import { useProfileSheet } from "@/components/layout/profile-sheet";
 
@@ -32,8 +31,9 @@ function MobileMenuGrid({
   let tileIndex = 0;
 
   return (
-    <ScrollArea className="flex-1 min-h-0">
-      <div className="px-4 pb-8 pt-2 space-y-5">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="sheet-body-scroll">
+        <div className="px-4 pb-8 pt-2 space-y-5">
         <button
           type="button"
           onClick={() => {
@@ -95,8 +95,9 @@ function MobileMenuGrid({
             </div>
           </section>
         ))}
+        </div>
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -108,35 +109,16 @@ export function MobileMenuSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const pathname = usePathname();
-  const BrandIcon = brand.icon;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        hideClose
-        className="mobile-menu-sheet p-0 gap-0 bg-background border-t-0"
-      >
+      <SheetContent side="bottom" hideClose className="p-0 gap-0">
         <SheetTitle className="sr-only">All tools</SheetTitle>
-        <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-1">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="mobile-brand-icon">
-              <BrandIcon className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-base font-semibold">Workspace</p>
-              <p className="text-xs text-muted-foreground">All career tools</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="mobile-icon-btn shrink-0"
-            aria-label="Close menu"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        <SheetBottomHeader
+          title="Workspace"
+          description="All career tools"
+          onClose={() => onOpenChange(false)}
+        />
         <MobileMenuGrid pathname={pathname} onNavigate={() => onOpenChange(false)} />
       </SheetContent>
     </Sheet>

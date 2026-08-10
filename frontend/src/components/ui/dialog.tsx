@@ -37,7 +37,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-[101] grid w-full gap-4 border border-border/80 bg-background shadow-2xl outline-none",
+        "fixed z-[101] flex flex-col w-full gap-4 border border-border/80 bg-background shadow-2xl outline-none",
         "duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         /* Phone & small tablet: bottom sheet (up to md / 768px) */

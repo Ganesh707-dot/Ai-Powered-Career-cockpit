@@ -18,7 +18,7 @@ const SheetOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm",
+      "fixed inset-0 z-[100] bg-black/65 backdrop-blur-sm",
       "data-[state=open]:animate-in data-[state=closed]:animate-out",
       "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       "duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
@@ -41,22 +41,22 @@ const SheetContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-[91] flex flex-col bg-sidebar shadow-2xl outline-none",
+        "fixed z-[101] flex flex-col bg-background shadow-2xl outline-none",
         "duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         side === "left" &&
-          "inset-y-0 left-0 h-full w-[min(88vw,300px)] border-r border-sidebar-border data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+          "inset-y-0 left-0 h-full w-[min(88vw,300px)] border-r border-sidebar-border bg-sidebar data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
         side === "right" &&
-          "inset-y-0 right-0 h-full w-[min(88vw,400px)] border-l border-sidebar-border data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+          "inset-y-0 right-0 h-full w-[min(88vw,400px)] border-l border-sidebar-border bg-sidebar data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
         side === "bottom" &&
-          "inset-x-0 bottom-0 top-auto max-h-[min(92dvh,720px)] rounded-t-2xl border-t border-sidebar-border z-[60] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          "sheet-bottom inset-x-0 bottom-0 top-auto data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         className
       )}
       {...props}
     >
       {side === "bottom" && (
         <div
-          className="mx-auto mt-3 mb-1 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30"
+          className="mx-auto mt-2.5 mb-0 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/35"
           aria-hidden
         />
       )}
@@ -68,7 +68,7 @@ const SheetContent = React.forwardRef<
             "bg-muted/80 transition-all duration-200 hover:bg-muted active:scale-95",
             "focus:outline-none focus:ring-2 focus:ring-ring"
           )}
-          aria-label="Close menu"
+          aria-label="Close"
         >
           <X className="h-5 w-5" />
         </DialogPrimitive.Close>
@@ -78,4 +78,45 @@ const SheetContent = React.forwardRef<
 ));
 SheetContent.displayName = DialogPrimitive.Content.displayName;
 
-export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetPortal, SheetOverlay, SheetTitle };
+/** Header row for bottom sheets — title + optional close */
+function SheetBottomHeader({
+  title,
+  description,
+  onClose,
+}: {
+  title: string;
+  description?: string;
+  onClose?: () => void;
+}) {
+  return (
+    <div className="sheet-bottom-header">
+      <div className="min-w-0 flex-1 pr-2">
+        <h2 className="text-base font-semibold leading-tight">{title}</h2>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{description}</p>
+        )}
+      </div>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="mobile-icon-btn shrink-0"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export {
+  Sheet,
+  SheetTrigger,
+  SheetClose,
+  SheetContent,
+  SheetPortal,
+  SheetOverlay,
+  SheetTitle,
+  SheetBottomHeader,
+};

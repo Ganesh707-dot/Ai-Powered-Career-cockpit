@@ -14,7 +14,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <Sidebar />
           <div className="w-full lg:pl-[260px] flex flex-1 flex-col min-h-0 mobile-content-offset">
             <Header />
-            <main className="flex-1 mobile-page-main page-enter min-w-0 overflow-x-hidden">
+            <main className="flex-1 mobile-page-main page-enter min-w-0 overflow-x-hidden overflow-y-auto touch-scroll overscroll-y-contain">
               {children}
             </main>
           </div>

@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetBottomHeader } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const ALL_PORTALS = Object.keys(PORTAL_META) as JobPortal[];
@@ -63,6 +63,7 @@ function ProfileEditor({
   loadResume,
   togglePortalDraft,
   onSave,
+  onClose,
 }: {
   tab: "profile" | "prefs";
   setTab: (t: "profile" | "prefs") => void;
@@ -85,9 +86,10 @@ function ProfileEditor({
   loadResume: (id: string) => void;
   togglePortalDraft: (portal: JobPortal) => void;
   onSave: () => void;
+  onClose: () => void;
 }) {
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className="flex shrink-0 gap-1 mx-4 lg:mx-0 rounded-lg bg-muted p-1">
         {(["profile", "prefs"] as const).map((t) => (
           <button
@@ -104,7 +106,7 @@ function ProfileEditor({
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto touch-scroll scrollbar-thin px-4 lg:px-0 py-3 space-y-3 min-h-0">
+      <div className="sheet-body-scroll px-4 lg:px-0 py-3 space-y-3">
         {tab === "profile" ? (
           <>
             <div className="space-y-1">
@@ -255,13 +257,21 @@ function ProfileEditor({
         )}
       </div>
 
-      <div className="shrink-0 flex flex-col gap-2 px-4 pb-4 pt-2 lg:px-0 lg:pb-0 border-t border-border/60 safe-bottom">
+      <div className="sheet-bottom-footer shrink-0">
         <Button onClick={onSave} className="w-full h-11 rounded-lg">
           <Save className="h-4 w-4" />
           Save profile
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onClose}
+          className="w-full h-10 rounded-lg text-muted-foreground"
+        >
+          Close
+        </Button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -364,32 +374,26 @@ export function ProfileSheetProvider({ children }: { children: React.ReactNode }
     loadResume,
     togglePortalDraft,
     onSave: save,
+    onClose: () => setOpen(false),
   };
-
-  const header = (
-    <div className="shrink-0 px-4 pt-2 pb-3 lg:px-0 lg:pt-0">
-      <h2 className="text-lg font-semibold leading-tight">Career profile</h2>
-      <p className="text-sm text-muted-foreground mt-1">
-        Optional — chat in Job Mentor also builds your profile.
-      </p>
-    </div>
-  );
 
   return (
     <ProfileSheetContext.Provider value={{ openProfile: () => setOpen(true) }}>
       {children}
 
-      {/* Mobile: bottom sheet — user-initiated only */}
+      {/* Mobile: bottom sheet — scrollable, closable */}
       {!isDesktop && (
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetContent
-            side="bottom"
-            hideClose
-            className="p-0 gap-0 flex flex-col max-h-[min(92dvh,720px)] bg-background"
-          >
+          <SheetContent side="bottom" hideClose className="p-0 gap-0">
             <SheetTitle className="sr-only">Career profile</SheetTitle>
-            {header}
-            <ProfileEditor {...editorProps} />
+            <SheetBottomHeader
+              title="Career profile"
+              description="Optional — Job Mentor chat also builds your profile."
+              onClose={() => setOpen(false)}
+            />
+            <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+              <ProfileEditor {...editorProps} />
+            </div>
           </SheetContent>
         </Sheet>
       )}
@@ -397,14 +401,16 @@ export function ProfileSheetProvider({ children }: { children: React.ReactNode }
       {/* Desktop: centered dialog */}
       {isDesktop && (
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="overflow-hidden flex flex-col p-0 gap-0 max-h-[85vh] lg:p-6 lg:gap-4">
+          <DialogContent className="overflow-hidden flex flex-col p-0 gap-0 max-h-[85vh] min-h-0 lg:p-6 lg:gap-4">
             <DialogHeader className="shrink-0 px-4 pt-4 lg:px-0 lg:pt-0">
               <DialogTitle>Career profile & job prefs</DialogTitle>
               <DialogDescription>
                 Saved on this device. Powers job matching, portal links, and AI features.
               </DialogDescription>
             </DialogHeader>
-            <ProfileEditor {...editorProps} />
+            <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+              <ProfileEditor {...editorProps} />
+            </div>
           </DialogContent>
         </Dialog>
       )}
