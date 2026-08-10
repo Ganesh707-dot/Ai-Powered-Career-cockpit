@@ -1,4 +1,21 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+const PUBLIC_BACKEND_FALLBACK = "https://careerpilot-api.vercel.app";
+
+/** Resolve API base for browser + server. Prefer explicit public URL in production. */
+function resolveApiBase(): string {
+  const explicit = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  if (explicit?.startsWith("http")) return explicit;
+
+  const backend = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
+  if (backend) return `${backend}/api/v1`;
+
+  if (process.env.NODE_ENV === "production") {
+    return `${PUBLIC_BACKEND_FALLBACK}/api/v1`;
+  }
+
+  return explicit || "/api/v1";
+}
+
+const API_BASE = resolveApiBase();
 
 export class ApiError extends Error {
   constructor(

@@ -30,7 +30,7 @@ interface ChatMessage {
 }
 
 /** Render AI/user text as readable paragraphs instead of one stacked block. */
-function ChatMessageBody({ content }: { content: string }) {
+export function ChatMessageBody({ content }: { content: string }) {
   const normalized = content.replace(/\r\n/g, "\n").trim();
   if (!normalized) return null;
 

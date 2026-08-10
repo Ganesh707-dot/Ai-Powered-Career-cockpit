@@ -1,66 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { api } from "@/lib/api";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useState } from "react";
+import { BarChart3, RefreshCw } from "lucide-react";
+import { api, ApiError } from "@/lib/api";
 import type { AnalyticsResponse } from "@/types";
 import { StatCard } from "@/components/shared/stat-card";
 import { PageLoading } from "@/components/shared/loading-spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { TrendingUp, Award, Target, Building2 } from "lucide-react";
 
-const PIE_COLORS = [
-  "#8b5cf6", "#3b82f6", "#f59e0b", "#ef4444", "#10b981",
-  "#6366f1", "#ec4899", "#14b8a6", "#f97316",
-];
+const AnalyticsCharts = dynamic(
+  () =>
+    import("@/components/analytics/analytics-charts").then((m) => m.AnalyticsCharts),
+  {
+    ssr: false,
+    loading: () => <PageLoading />,
+  }
+);
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .get<AnalyticsResponse>("/analytics")
-      .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+  const loadAnalytics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.get<AnalyticsResponse>("/analytics");
+      setData(response);
+    } catch (err) {
+      setData(null);
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not load analytics. Check your connection and try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
+
   if (loading) return <PageLoading />;
-  if (!data) {
+
+  if (error || !data) {
     return (
-      <div className="text-center text-muted-foreground">
-        Failed to load analytics.
+      <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center animate-fade-in">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <BarChart3 className="h-7 w-7" />
+        </div>
+        <div className="space-y-1 max-w-sm">
+          <p className="text-base font-semibold">Analytics unavailable</p>
+          <p className="text-sm text-muted-foreground">{error || "Failed to load analytics."}</p>
+        </div>
+        <Button onClick={loadAnalytics} className="rounded-xl">
+          <RefreshCw className="h-4 w-4" />
+          Retry
+        </Button>
       </div>
     );
   }
 
-  const trendData = data.application_trends.map((t) => ({
-    date: t.date.slice(5),
-    count: t.count,
-  }));
-
-  const weeklyData = data.weekly_progress.map((t) => ({
-    week: t.date.slice(5),
-    count: t.count,
-  }));
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-4 xl:space-y-6 animate-fade-in pb-4">
+      <div className="hidden xl:block">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          Analytics
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Application trends, conversion rates, and skill frequency
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Interview Conversion"
           value={`${data.interview_conversion_rate}%`}
@@ -83,131 +102,10 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Application Trends (30 Days)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="date" stroke="#888" fontSize={12} />
-                <YAxis stroke="#888" fontSize={12} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(240 10% 5.5%)",
-                    border: "1px solid hsl(240 5% 17%)",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="count"
-                  stroke="#8b5cf6"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Status Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={data.status_distribution}
-                  dataKey="count"
-                  nameKey="status"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ status, count }) => `${status}: ${count}`}
-                  labelLine={false}
-                  fontSize={11}
-                >
-                  {data.status_distribution.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(240 10% 5.5%)",
-                    border: "1px solid hsl(240 5% 17%)",
-                    borderRadius: "8px",
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Weekly Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="week" stroke="#888" fontSize={12} />
-                <YAxis stroke="#888" fontSize={12} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(240 10% 5.5%)",
-                    border: "1px solid hsl(240 5% 17%)",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Most Requested Skills</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.top_skills.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">
-                Add skills to your applications to see trends
-              </p>
-            ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={data.top_skills.slice(0, 10)} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis type="number" stroke="#888" fontSize={12} allowDecimals={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="skill"
-                    stroke="#888"
-                    fontSize={11}
-                    width={100}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "hsl(240 10% 5.5%)",
-                      border: "1px solid hsl(240 5% 17%)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <AnalyticsCharts data={data} />
 
       {data.companies_applied.length > 0 && (
-        <Card>
+        <Card className="max-xl:rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base">Companies Applied</CardTitle>
           </CardHeader>
