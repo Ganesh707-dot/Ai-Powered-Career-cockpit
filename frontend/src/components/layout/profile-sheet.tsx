@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { UserRound, Save } from "lucide-react";
 import { api } from "@/lib/api";
 import {
@@ -10,6 +10,7 @@ import {
   type JobPortal,
   type WorkModePref,
 } from "@/stores/profile-store";
+import { useUIStore } from "@/stores/ui-store";
 import { PORTAL_META } from "@/lib/job-portals";
 import type { Resume, ResumeListResponse } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -25,13 +26,19 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-const DISMISS_KEY = "careerpilot-onboarding-dismissed";
-
 const ALL_PORTALS = Object.keys(PORTAL_META) as JobPortal[];
 
 export function ProfileSheet() {
   const profile = useProfileStore();
-  const [open, setOpen] = useState(false);
+  const { profileOpen, setProfileOpen } = useUIStore();
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = profileOpen || localOpen;
+
+  const setOpen = (next: boolean) => {
+    setLocalOpen(next);
+    setProfileOpen(next);
+  };
+
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [tab, setTab] = useState<"profile" | "prefs">("profile");
   const [draft, setDraft] = useState({
@@ -47,31 +54,6 @@ export function ProfileSheet() {
     aiAssistLevel: profile.aiAssistLevel,
     enabledPortals: [...profile.enabledPortals],
   });
-
-  // Auto-prompt once per device — never trap the user in a loop
-  useEffect(() => {
-    const state = useProfileStore.getState();
-    if (state.onboardingDone || state.isReady()) return;
-    if (typeof window !== "undefined" && sessionStorage.getItem(DISMISS_KEY)) return;
-
-    const timer = window.setTimeout(() => setOpen(true), 600);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  const handleOpenChange = useCallback((next: boolean) => {
-    setOpen(next);
-    if (!next && typeof window !== "undefined") {
-      sessionStorage.setItem(DISMISS_KEY, "1");
-    }
-  }, []);
-
-  const skipForNow = () => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(DISMISS_KEY, "1");
-    }
-    profile.setProfile({ onboardingDone: true });
-    setOpen(false);
-  };
 
   useEffect(() => {
     if (!open) return;
@@ -130,13 +112,8 @@ export function ProfileSheet() {
   };
 
   const save = () => {
-    profile.setProfile({
-      ...draft,
-      onboardingDone: true,
-    });
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(DISMISS_KEY, "1");
-    }
+    profile.setProfile({ ...draft, onboardingDone: true });
+    localStorage.setItem("careerpilot-setup-banner-dismissed", "1");
     setOpen(false);
   };
 
@@ -148,7 +125,7 @@ export function ProfileSheet() {
         variant={ready ? "outline" : "default"}
         size="sm"
         onClick={() => setOpen(true)}
-        className="gap-1.5 text-xs sm:text-sm rounded-lg"
+        className="gap-1.5 text-xs sm:text-sm rounded-lg min-h-9"
       >
         <UserRound className="h-4 w-4" />
         <span className="hidden sm:inline max-w-[80px] md:max-w-none truncate">
@@ -156,23 +133,23 @@ export function ProfileSheet() {
         </span>
       </Button>
 
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="overflow-hidden flex flex-col max-h-[min(92dvh,720px)] sm:max-h-[90vh]">
-          <DialogHeader className="shrink-0">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="overflow-hidden flex flex-col p-0 gap-0 max-h-[min(90dvh,720px)] md:max-h-[85vh] md:p-6 md:gap-4">
+          <DialogHeader className="shrink-0 px-4 pt-4 md:px-0 md:pt-0">
             <DialogTitle>Career profile & job prefs</DialogTitle>
             <DialogDescription>
               Saved on this device. Powers job matching, portal links, and AI features.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex shrink-0 gap-1 rounded-lg bg-muted p-1">
+          <div className="flex shrink-0 gap-1 mx-4 md:mx-0 rounded-lg bg-muted p-1">
             {(["profile", "prefs"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTab(t)}
                 className={cn(
-                  "flex-1 rounded-md py-2 text-sm font-medium transition-all duration-200",
+                  "flex-1 rounded-md py-2.5 text-sm font-medium transition-all duration-200 min-h-[44px]",
                   tab === t ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
                 )}
               >
@@ -181,7 +158,7 @@ export function ProfileSheet() {
             ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto touch-scroll scrollbar-thin -mx-1 px-1 space-y-3 min-h-0">
+          <div className="flex-1 overflow-y-auto touch-scroll scrollbar-thin px-4 md:px-0 py-3 space-y-3 min-h-0">
             {tab === "profile" ? (
               <>
                 <div className="space-y-1">
@@ -190,7 +167,6 @@ export function ProfileSheet() {
                     value={draft.displayName}
                     onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
                     placeholder="Your name"
-                    className="h-11"
                   />
                 </div>
                 <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
@@ -199,7 +175,6 @@ export function ProfileSheet() {
                     <Input
                       value={draft.currentLevel}
                       onChange={(e) => setDraft({ ...draft, currentLevel: e.target.value })}
-                      className="h-11"
                     />
                   </div>
                   <div className="space-y-1">
@@ -212,7 +187,6 @@ export function ProfileSheet() {
                       onChange={(e) =>
                         setDraft({ ...draft, yearsExperience: Number(e.target.value) || 0 })
                       }
-                      className="h-11"
                     />
                   </div>
                 </div>
@@ -221,7 +195,6 @@ export function ProfileSheet() {
                   <Input
                     value={draft.targetRole}
                     onChange={(e) => setDraft({ ...draft, targetRole: e.target.value })}
-                    className="h-11"
                   />
                 </div>
                 <div className="space-y-1">
@@ -230,13 +203,12 @@ export function ProfileSheet() {
                     value={draft.skills}
                     onChange={(e) => setDraft({ ...draft, skills: e.target.value })}
                     placeholder="React, TypeScript, Node.js…"
-                    className="h-11"
                   />
                 </div>
                 <div className="space-y-1">
                   <Label>Link resume (optional)</Label>
                   <select
-                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base md:text-sm"
                     value={profile.resumeId ?? ""}
                     onChange={(e) => loadResume(e.target.value)}
                   >
@@ -263,7 +235,6 @@ export function ProfileSheet() {
                       onChange={(e) =>
                         setDraft({ ...draft, minSalaryLPA: Number(e.target.value) || 0 })
                       }
-                      className="h-11"
                     />
                   </div>
                   <div className="space-y-1">
@@ -276,7 +247,6 @@ export function ProfileSheet() {
                       onChange={(e) =>
                         setDraft({ ...draft, maxSalaryLPA: Number(e.target.value) || 0 })
                       }
-                      className="h-11"
                     />
                   </div>
                 </div>
@@ -288,13 +258,12 @@ export function ProfileSheet() {
                       setDraft({ ...draft, preferredLocations: e.target.value })
                     }
                     placeholder="Bangalore, Remote"
-                    className="h-11"
                   />
                 </div>
                 <div className="space-y-1">
                   <Label>Work mode</Label>
                   <select
-                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base md:text-sm"
                     value={draft.workModePref}
                     onChange={(e) =>
                       setDraft({ ...draft, workModePref: e.target.value as WorkModePref })
@@ -314,7 +283,7 @@ export function ProfileSheet() {
                       <Badge
                         key={portal}
                         variant={draft.enabledPortals.includes(portal) ? "default" : "outline"}
-                        className="cursor-pointer select-none transition-transform active:scale-95 py-1.5"
+                        className="cursor-pointer select-none transition-transform active:scale-95 py-1.5 min-h-[32px]"
                         onClick={() => togglePortalDraft(portal)}
                       >
                         {portal}
@@ -325,7 +294,7 @@ export function ProfileSheet() {
                 <div className="space-y-1">
                   <Label>AI assist</Label>
                   <select
-                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base md:text-sm"
                     value={draft.aiAssistLevel}
                     onChange={(e) =>
                       setDraft({ ...draft, aiAssistLevel: e.target.value as AiAssistLevel })
@@ -342,18 +311,10 @@ export function ProfileSheet() {
             )}
           </div>
 
-          <div className="shrink-0 flex flex-col gap-2 pt-2 border-t border-border/60">
+          <div className="shrink-0 flex flex-col gap-2 px-4 pb-4 pt-2 md:px-0 md:pb-0 border-t border-border/60 safe-bottom">
             <Button onClick={save} className="w-full h-11 rounded-lg">
               <Save className="h-4 w-4" />
               Save profile
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={skipForNow}
-              className="w-full h-10 text-muted-foreground rounded-lg"
-            >
-              Skip for now
             </Button>
           </div>
         </DialogContent>

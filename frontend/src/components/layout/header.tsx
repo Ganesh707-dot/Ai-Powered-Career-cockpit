@@ -71,7 +71,7 @@ export function Header() {
         )}
 
         {ready && (
-          <div className="lg:hidden border-t border-border/40 px-4 py-1.5">
+          <div className="hidden md:block lg:hidden border-t border-border/40 px-4 py-1.5">
             <p className="text-[10px] text-muted-foreground truncate">
               {profile.minSalaryLPA}–{profile.maxSalaryLPA} LPA · {profile.targetRole}
             </p>

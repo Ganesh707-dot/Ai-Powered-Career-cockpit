@@ -37,36 +37,37 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-[101] grid w-full gap-4 border border-border/80 bg-background shadow-2xl",
+        "fixed z-[101] grid w-full gap-4 border border-border/80 bg-background shadow-2xl outline-none",
         "duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
-        /* Mobile: bottom sheet — easy to dismiss, fits small screens */
-        "inset-x-0 bottom-0 top-auto max-h-[min(92dvh,720px)] rounded-t-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+        /* Phone & small tablet: bottom sheet (up to md / 768px) */
+        "inset-x-0 bottom-0 top-auto max-h-[90dvh] rounded-t-2xl",
+        "pb-[max(1rem,env(safe-area-inset-bottom))]",
         "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        /* Tablet+ : centered modal */
-        "sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-xl sm:p-6",
-        "sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
-        "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
-        "sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%]",
-        "sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]",
+        /* Laptop+ : centered modal */
+        "md:inset-x-auto md:bottom-auto md:left-[50%] md:top-[50%] md:max-w-lg md:max-h-[85vh]",
+        "md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-xl md:p-6",
+        "md:data-[state=closed]:slide-out-to-bottom-0 md:data-[state=open]:slide-in-from-bottom-0",
+        "md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95",
+        "md:data-[state=closed]:slide-out-to-left-1/2 md:data-[state=closed]:slide-out-to-top-[48%]",
+        "md:data-[state=open]:slide-in-from-left-1/2 md:data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
       {...props}
     >
-      {/* Mobile drag handle */}
       <div
-        className="mx-auto mb-1 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30 sm:hidden"
+        className="mx-auto mt-3 mb-0 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30 md:hidden"
         aria-hidden
       />
       {children}
       <DialogPrimitive.Close
         className={cn(
-          "absolute right-3 top-3 sm:right-4 sm:top-4",
-          "flex h-10 w-10 items-center justify-center rounded-full",
+          "absolute right-3 top-3 md:right-4 md:top-4",
+          "flex h-11 w-11 items-center justify-center rounded-full",
           "bg-muted/80 text-foreground/80",
-          "transition-all duration-200 hover:bg-muted hover:scale-105 active:scale-95",
-          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+          "transition-all duration-200 hover:bg-muted active:scale-95",
+          "focus:outline-none focus:ring-2 focus:ring-ring"
         )}
         aria-label="Close"
       >
@@ -81,10 +82,7 @@ const DialogHeader = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn("flex flex-col space-y-1.5 pr-12 text-left", className)}
-    {...props}
-  />
+  <div className={cn("flex flex-col space-y-1.5 pr-14 text-left", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
 
