@@ -218,6 +218,11 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
                 <MessageCircle className="h-4 w-4 text-primary" />
               </div>
               <h2 className="font-semibold text-base">Job mentor</h2>
+              {compact && (
+                <p className="text-[10px] text-primary/80 font-medium mt-0.5">
+                  Intent-based · not keyword search
+                </p>
+              )}
             </div>
             {!compact && (
               <p className="mt-2 text-sm text-muted-foreground max-w-lg leading-relaxed">

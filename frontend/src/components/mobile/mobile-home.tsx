@@ -8,6 +8,7 @@ import {
   FileText,
   Mic,
   Radar,
+  Settings2,
   Sparkles,
   Target,
   TrendingUp,
@@ -18,8 +19,6 @@ import { formatRelativeTime } from "@/lib/utils";
 import { useProfileStore } from "@/stores/profile-store";
 import type { DashboardResponse, DiscoveredJob } from "@/types";
 import { JobMentorChat, MentorJobCard } from "@/components/cockpit/job-mentor-chat";
-import { useProfileSheet } from "@/components/layout/profile-sheet";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -29,18 +28,6 @@ const QUICK_ACTIONS = [
   { name: "JD Analysis", href: "/jd-analysis", icon: Brain, gradient: "from-amber-500/25 to-amber-600/5" },
   { name: "Resumes", href: "/resumes", icon: FileText, gradient: "from-emerald-500/25 to-emerald-600/5" },
 ] as const;
-
-function initials(name: string, role: string) {
-  if (name.trim()) {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-  }
-  return role.slice(0, 2).toUpperCase();
-}
 
 interface MobileHomeProps {
   dashboard: DashboardResponse | null;
@@ -58,7 +45,6 @@ export function MobileHome({
   onTrack,
 }: MobileHomeProps) {
   const profile = useProfileStore();
-  const { openProfile } = useProfileSheet();
   const stats = dashboard?.stats;
   const weeklyPercent = stats
     ? Math.min((stats.weekly_progress / stats.weekly_goal) * 100, 100)
@@ -93,18 +79,13 @@ export function MobileHome({
               Chat to search roles — resume, salary & intent from conversation.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={openProfile}
-            className="mobile-avatar-btn shrink-0"
-            aria-label="Open profile"
+          <Link
+            href="/profile"
+            className="mobile-avatar-btn shrink-0 flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-muted/50 text-muted-foreground"
+            aria-label="Profile setup (optional)"
           >
-            <Avatar className="h-11 w-11 border-2 border-primary/30">
-              <AvatarFallback className="bg-primary/15 text-sm font-semibold text-primary">
-                {initials(profile.displayName, profile.targetRole)}
-              </AvatarFallback>
-            </Avatar>
-          </button>
+            <Settings2 className="h-4 w-4" />
+          </Link>
         </div>
 
         {stats && (

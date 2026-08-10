@@ -184,19 +184,19 @@
   }
 
   .mobile-content-offset {
-    @apply pb-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))] lg:pb-0;
+    @apply pb-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))] xl:pb-0;
   }
 
   .mobile-page-main {
-    @apply lg:px-8 lg:py-8;
+    @apply xl:px-8 xl:py-8;
   }
 
   .mobile-page-main > :not(.mobile-home-shell) {
-    @apply max-lg:px-4 max-lg:py-4;
+    @apply max-xl:px-4 max-xl:py-4;
   }
 
   .mobile-home-shell {
-    @apply max-lg:px-0 max-lg:py-0;
+    @apply max-xl:px-0 max-xl:py-0;
   }
 
   .mobile-home-hero {

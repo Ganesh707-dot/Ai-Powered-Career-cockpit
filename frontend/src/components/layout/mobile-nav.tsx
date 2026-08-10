@@ -8,7 +8,6 @@ import { isMobileMoreRoute, mobileTabs, navGroups } from "@/lib/navigation";
 import { MobileTabIcon } from "@/components/mobile/mobile-tab-icon";
 import { Sheet, SheetContent, SheetTitle, SheetBottomHeader } from "@/components/ui/sheet";
 import { useProfileStore } from "@/stores/profile-store";
-import { useProfileSheet } from "@/components/layout/profile-sheet";
 
 const TILE_GRADIENTS = [
   "from-violet-500/20 via-violet-500/5 to-transparent",
@@ -27,20 +26,16 @@ function MobileMenuGrid({
   onNavigate: () => void;
 }) {
   const profile = useProfileStore();
-  const { openProfile } = useProfileSheet();
   let tileIndex = 0;
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       <div className="sheet-body-scroll">
         <div className="px-4 pb-8 pt-2 space-y-5">
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate();
-            openProfile();
-          }}
-          className="mobile-menu-profile w-full text-left"
+        <Link
+          href="/profile"
+          onClick={onNavigate}
+          className="mobile-menu-profile w-full text-left block"
         >
           <div className="flex items-center gap-3">
             <div className="mobile-menu-profile-icon">
@@ -55,7 +50,7 @@ function MobileMenuGrid({
               </p>
             </div>
           </div>
-        </button>
+        </Link>
 
         {navGroups.map((group) => (
           <section key={group.label}>
@@ -138,7 +133,7 @@ export function MobileNav({
   return (
     <>
       <MobileMenuSheet open={menuOpen} onOpenChange={onMenuOpenChange} />
-      <nav className="mobile-tab-bar" aria-label="Primary navigation">
+      <nav className="mobile-tab-bar xl:hidden" aria-label="Primary navigation">
         <div className="mobile-tab-bar-inner">
           {mobileTabs.map((tab) => {
             const isActive = tab.match(pathname);

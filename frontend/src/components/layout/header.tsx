@@ -18,12 +18,13 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const BrandIcon = brand.icon;
   const isHome = pathname === "/";
+  const hideMobileHeader = isHome || pathname === "/profile";
 
   return (
     <>
       {/* Mobile header — hidden on home (dedicated mobile dashboard has its own hero) */}
-      {!isHome && (
-        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 backdrop-blur-xl safe-top lg:hidden">
+      {!hideMobileHeader && (
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 backdrop-blur-xl safe-top xl:hidden">
           <div className="flex h-12 items-center justify-between gap-3 px-4">
             <Link href="/" className="flex min-w-0 flex-1 items-center gap-2.5">
               <div className="mobile-brand-icon shrink-0">
@@ -47,7 +48,7 @@ export function Header() {
       )}
 
       {/* Desktop header */}
-      <header className="sticky top-0 z-30 hidden lg:block border-b border-border/60 bg-background/70 backdrop-blur-xl safe-top">
+      <header className="sticky top-0 z-30 hidden xl:block border-b border-border/60 bg-background/70 backdrop-blur-xl safe-top">
         <div className="flex h-[4.25rem] items-center justify-between gap-3 px-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="min-w-0">

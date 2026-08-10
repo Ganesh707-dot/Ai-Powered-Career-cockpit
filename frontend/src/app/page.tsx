@@ -80,10 +80,10 @@ export default function CareerCockpitPage() {
   if (loading) {
     return (
       <>
-        <div className="lg:hidden px-4 py-6">
+        <div className="xl:hidden px-4 py-6">
           <PageLoading />
         </div>
-        <PageShell wide className="hidden lg:block">
+        <PageShell wide className="hidden xl:block">
           <PageLoading />
         </PageShell>
       </>
@@ -98,7 +98,7 @@ export default function CareerCockpitPage() {
   return (
     <>
       {/* Mobile-only dashboard — separate from desktop layout */}
-      <div className="lg:hidden mobile-home-shell">
+      <div className="xl:hidden mobile-home-shell">
         <MobileHome
           dashboard={dashboard}
           jobs={jobs}
@@ -109,7 +109,7 @@ export default function CareerCockpitPage() {
       </div>
 
       {/* Desktop cockpit — sidebar + full layout */}
-      <PageShell wide className="hidden lg:block">
+      <PageShell wide className="hidden xl:block">
         <PageHeader
           title={
             profile.displayName

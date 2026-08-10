@@ -135,6 +135,7 @@ export const pageTitles: Record<string, string> = {
   "/resumes": "Resume Intelligence",
   "/learning": "Learning Path",
   "/analytics": "Analytics",
+  "/profile": "Profile setup",
 };
 
 export const pageDescriptions: Record<string, string> = {
@@ -149,6 +150,7 @@ export const pageDescriptions: Record<string, string> = {
   "/resumes": "Upload PDF/DOCX and get AI coaching",
   "/learning": "AI-generated learning roadmap",
   "/analytics": "Application trends and skill frequency",
+  "/profile": "Optional profile & job preferences — or build via Job Mentor chat",
 };
 
 export const mobilePrimaryNav = navigation.filter((item) => item.mobilePrimary);
@@ -190,4 +192,4 @@ export const brand = {
   tagline: "Enterprise career cockpit",
   icon: Rocket,
 };
-
+
