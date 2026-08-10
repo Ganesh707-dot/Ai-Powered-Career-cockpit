@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Menu, Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ProfileSheet } from "./profile-sheet";
-import { MobileNav, MobileSidebar } from "./mobile-nav";
+import { MobileNav } from "./mobile-nav";
 import { useProfileStore } from "@/stores/profile-store";
-import { pageTitles, pageDescriptions } from "@/lib/navigation";
+import { pageTitles, pageDescriptions, brand } from "@/lib/navigation";
 
 export function Header() {
   const pathname = usePathname();
@@ -16,34 +16,60 @@ export function Header() {
   const description = pageDescriptions[pathname];
   const profile = useProfileStore();
   const [menuOpen, setMenuOpen] = useState(false);
+  const BrandIcon = brand.icon;
+  const isHome = pathname === "/";
 
   return (
     <>
-      <MobileSidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-xl safe-top">
-        <div className="flex h-14 lg:h-[4.25rem] items-center justify-between gap-3 px-4 lg:px-6">
+      {/* Mobile header — no sidebar drawer */}
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur-xl safe-top lg:hidden">
+        <div className="flex h-12 items-center justify-between gap-3 px-4">
+          <Link href="/" className="flex min-w-0 flex-1 items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 shadow-sm shadow-primary/20">
+              <BrandIcon className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-tight truncate">
+                {isHome ? brand.name : title}
+              </p>
+              {!isHome && (
+                <p className="text-[10px] text-muted-foreground truncate">{brand.name}</p>
+              )}
+            </div>
+          </Link>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ProfileSheet />
+          </div>
+        </div>
+        {description && isHome && (
+          <div className="border-t border-border/40 px-4 py-2">
+            <p className="text-xs text-muted-foreground leading-snug line-clamp-2">
+              {description}
+            </p>
+          </div>
+        )}
+        {profile.isReady() && !isHome && (
+          <div className="border-t border-border/40 px-4 py-1.5">
+            <p className="text-[10px] text-muted-foreground truncate">
+              {profile.minSalaryLPA}–{profile.maxSalaryLPA} LPA · {profile.targetRole}
+            </p>
+          </div>
+        )}
+      </header>
+
+      {/* Desktop header */}
+      <header className="sticky top-0 z-30 hidden lg:block border-b border-border/60 bg-background/70 backdrop-blur-xl safe-top">
+        <div className="flex h-[4.25rem] items-center justify-between gap-3 px-6">
           <div className="flex min-w-0 items-center gap-2.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 lg:hidden h-9 w-9 rounded-lg"
-              onClick={() => setMenuOpen(true)}
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <div className="min-w-0 hidden sm:block">
+            <div className="min-w-0">
               <nav className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
                 <span>Workspace</span>
                 <ChevronRight className="h-3 w-3 opacity-50" />
                 <span className="text-foreground/80 truncate">{title}</span>
               </nav>
-              <h2 className="text-base lg:text-lg font-semibold tracking-tight truncate leading-tight">
+              <h2 className="text-lg font-semibold tracking-tight truncate leading-tight">
                 {title}
               </h2>
-            </div>
-            <div className="min-w-0 sm:hidden">
-              <h2 className="text-base font-semibold tracking-tight truncate">{title}</h2>
             </div>
           </div>
 
@@ -52,26 +78,20 @@ export function Header() {
             <Button asChild size="sm" className="rounded-lg shadow-sm shadow-primary/20">
               <Link href="/jobs?action=new">
                 <Plus className="h-4 w-4" />
-                <span className="hidden md:inline">Track</span>
+                Track
               </Link>
             </Button>
           </div>
         </div>
 
         {description && (
-          <div className="hidden lg:block border-t border-border/40 px-6 py-2">
+          <div className="border-t border-border/40 px-6 py-2">
             <p className="text-xs text-muted-foreground truncate">{description}</p>
           </div>
         )}
-
-        {profile.isReady() && (
-          <div className="hidden md:block lg:hidden border-t border-border/40 px-4 py-1.5">
-            <p className="text-[10px] text-muted-foreground truncate">
-              {profile.minSalaryLPA}–{profile.maxSalaryLPA} LPA · {profile.targetRole}
-            </p>
-          </div>
-        )}
       </header>
+
+      <MobileNav menuOpen={menuOpen} onMenuOpenChange={setMenuOpen} />
     </>
   );
 }

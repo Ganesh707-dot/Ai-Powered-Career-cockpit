@@ -22,11 +22,11 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between",
+        "flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-start lg:justify-between",
         className
       )}
     >
-      <div className="flex gap-4 min-w-0">
+      <div className="flex gap-3 sm:gap-4 min-w-0">
         {Icon && (
           <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
             <Icon className="h-5 w-5 text-primary" />
@@ -34,7 +34,7 @@ export function PageHeader({
         )}
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight text-foreground">
               {title}
             </h1>
             {badge && (

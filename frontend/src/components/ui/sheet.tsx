@@ -31,8 +31,11 @@ SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { side?: "left" | "right" }
->(({ side = "left", className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    side?: "left" | "right" | "bottom";
+    hideClose?: boolean;
+  }
+>(({ side = "left", hideClose, className, children, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <DialogPrimitive.Content
@@ -45,21 +48,31 @@ const SheetContent = React.forwardRef<
           "inset-y-0 left-0 h-full w-[min(88vw,300px)] border-r border-sidebar-border data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
         side === "right" &&
           "inset-y-0 right-0 h-full w-[min(88vw,400px)] border-l border-sidebar-border data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+        side === "bottom" &&
+          "inset-x-0 bottom-0 top-auto max-h-[min(92dvh,720px)] rounded-t-2xl border-t border-sidebar-border data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         className
       )}
       {...props}
     >
+      {side === "bottom" && (
+        <div
+          className="mx-auto mt-3 mb-1 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30"
+          aria-hidden
+        />
+      )}
       {children}
-      <DialogPrimitive.Close
-        className={cn(
-          "absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full",
-          "bg-muted/80 transition-all duration-200 hover:bg-muted active:scale-95",
-          "focus:outline-none focus:ring-2 focus:ring-ring"
-        )}
-        aria-label="Close menu"
-      >
-        <X className="h-5 w-5" />
-      </DialogPrimitive.Close>
+      {!hideClose && side !== "bottom" && (
+        <DialogPrimitive.Close
+          className={cn(
+            "absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full",
+            "bg-muted/80 transition-all duration-200 hover:bg-muted active:scale-95",
+            "focus:outline-none focus:ring-2 focus:ring-ring"
+          )}
+          aria-label="Close menu"
+        >
+          <X className="h-5 w-5" />
+        </DialogPrimitive.Close>
+      )}
     </DialogPrimitive.Content>
   </SheetPortal>
 ));

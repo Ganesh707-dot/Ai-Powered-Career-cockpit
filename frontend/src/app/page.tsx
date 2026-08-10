@@ -94,8 +94,9 @@ export default function CareerCockpitPage() {
         description="Conversational job search — your resume, salary band, and preferences drive every match."
         icon={Radar}
         badge="Live"
+        className="max-lg:[&_h1]:hidden max-lg:[&_p]:hidden"
         actions={
-          <Button variant="outline" size="sm" className="rounded-lg" asChild>
+          <Button variant="outline" size="sm" className="rounded-lg hidden sm:inline-flex" asChild>
             <Link href="/jobs">View pipeline</Link>
           </Button>
         }
@@ -110,12 +111,12 @@ export default function CareerCockpitPage() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-12">
-        <div className="xl:col-span-7 2xl:col-span-8">
+      <div className="grid gap-4 lg:gap-6 xl:grid-cols-12">
+        <div className="xl:col-span-7 2xl:col-span-8 order-1">
           <JobMentorChat onJobsUpdate={handleJobsUpdate} onTrack={trackJob} />
         </div>
 
-        <div className="xl:col-span-5 2xl:col-span-4 space-y-4">
+        <div className="xl:col-span-5 2xl:col-span-4 space-y-4 order-2">
           <section className="surface-elevated p-4 sm:p-5">
             <h2 className="mb-4 text-sm font-semibold flex items-center gap-2">
               <Zap className="h-4 w-4 text-primary" />

@@ -160,6 +160,37 @@
   .mobile-dock-blur {
     @apply bg-background/85 backdrop-blur-xl backdrop-saturate-150;
   }
+
+  .mobile-content-offset {
+    @apply pb-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))] lg:pb-0;
+  }
+
+  .mobile-page-main {
+    @apply px-4 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-8;
+  }
+
+  .mobile-tab-bar {
+    @apply fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-background/95 backdrop-blur-xl;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-tab-height: 3.5rem;
+  }
+
+  .mobile-tab-bar-inner {
+    @apply mx-auto grid h-14 max-w-lg grid-cols-5 items-stretch;
+  }
+
+  .mobile-tab-item {
+    @apply relative flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium text-muted-foreground transition-colors duration-200 active:scale-95;
+  }
+
+  .mobile-tab-item-active {
+    @apply text-primary;
+  }
+
+  .mobile-tab-item-active::before {
+    content: "";
+    @apply absolute top-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary;
+  }
 }
 
 @keyframes page-enter {

@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 interface PageShellProps {
   children: React.ReactNode;
   className?: string;
-  /** Wider layout for dashboards */
+  /** Wider layout for dashboards */
   wide?: boolean;
 }
 
@@ -11,7 +11,7 @@ export function PageShell({ children, className, wide }: PageShellProps) {
   return (
     <div
       className={cn(
-        "mx-auto w-full space-y-6 sm:space-y-8",
+        "mx-auto w-full space-y-4 sm:space-y-6 lg:space-y-8",
         wide ? "max-w-[1600px]" : "max-w-7xl",
         className
       )}
