@@ -62,8 +62,7 @@ export function ProfileEditor({
   return (
     <div
       className={cn(
-        "flex flex-col min-h-0",
-        isPage ? "flex-1" : "flex-1 overflow-hidden"
+        isPage ? "pb-4" : "flex flex-col flex-1 min-h-0 overflow-hidden"
       )}
     >
       <div
@@ -89,8 +88,7 @@ export function ProfileEditor({
 
       <div
         className={cn(
-          "modal-body",
-          isPage && "pb-28 xl:pb-4"
+          isPage ? "px-4 py-4 space-y-3 pb-28 xl:pb-4" : "modal-body"
         )}
       >
         {tab === "profile" ? (

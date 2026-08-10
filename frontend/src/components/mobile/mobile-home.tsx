@@ -64,7 +64,7 @@ export function MobileHome({
     : "Your career cockpit";
 
   return (
-    <div className="mobile-home space-y-5 pb-2">
+    <div className="mobile-home space-y-5 pb-6">
       {/* Mobile-only hero — no desktop sidebar feel */}
       <section className="mobile-home-hero px-4 pt-3 pb-5">
         <div className="flex items-start justify-between gap-3">

@@ -209,15 +209,15 @@ export default function MentorPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2 flex flex-col min-h-[560px]">
+        <Card className="lg:col-span-2 flex flex-col max-xl:min-h-0 min-h-[560px]">
           <CardHeader className="border-b">
             <CardTitle className="text-base flex items-center justify-between">
               <span>Mentor chat</span>
               {streaming && <Badge variant="secondary">Streaming…</Badge>}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col p-0">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[420px]">
+          <CardContent className="flex flex-col p-0 max-xl:flex-none xl:flex-1">
+            <div className="p-4 space-y-4 max-xl:overflow-visible xl:flex-1 xl:overflow-y-auto xl:max-h-[420px] touch-scroll">
               {messages.length === 0 && (
                 <div className="text-sm text-muted-foreground p-4 rounded-lg bg-muted/40">
                   Ask things like: “I’m mid-level React — how do I reach Senior Full Stack in 8 weeks?”

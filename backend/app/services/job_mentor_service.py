@@ -21,6 +21,8 @@ Rules:
 - Read between the lines: "something remote with good pay" → remote, 15+ LPA.
 - Honest but encouraging. One clarifying question only if truly stuck.
 - Keep `reply` under ~120 words — conversational, not a report.
+- Format `reply` as 1–3 short paragraphs separated by a blank line (\\n\\n). Never one giant block.
+- The `reply` field must be plain human text only — never JSON, markdown headers, or bullet lists.
 
 Also infer search criteria AND profile facts from conversation + resume text.
 Return JSON with exactly these keys:
@@ -238,8 +240,20 @@ Latest user message: {last_user or '(start conversation)'}
             intent.work_mode = "Hybrid"
         if "bangalore" in last or "bengaluru" in last:
             intent.preferred_locations = ["Bangalore"]
+        if "mumbai" in last:
+            intent.preferred_locations = ["Mumbai"]
+        if "pune" in last:
+            intent.preferred_locations = ["Pune"]
         if "15" in last or "lpa" in last:
             intent.min_salary_lpa = max(request.min_salary_lpa, 15)
+        if "react" in last:
+            intent.skills_emphasis = list(dict.fromkeys([*intent.skills_emphasis, "React"]))
+        if "node" in last or "nodejs" in last:
+            intent.skills_emphasis = list(dict.fromkeys([*intent.skills_emphasis, "Node.js"]))
+        if "python" in last:
+            intent.skills_emphasis = list(dict.fromkeys([*intent.skills_emphasis, "Python"]))
+        if "senior" in last and "senior" not in (intent.target_role or "").lower():
+            intent.target_role = f"Senior {request.target_role}".strip()
 
         reply = self._fallback_reply(request, has_resume)
         insight = (

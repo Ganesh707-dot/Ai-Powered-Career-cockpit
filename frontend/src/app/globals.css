@@ -43,13 +43,21 @@
   html {
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: auto;
+    height: 100%;
   }
 
   body {
-    @apply bg-background text-foreground antialiased overflow-x-hidden;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground antialiased;
+    overflow-x: hidden;
+    overflow-y: visible;
     min-height: 100dvh;
     min-height: -webkit-fill-available;
+    touch-action: pan-y;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 
   /* Prevent iOS zoom on input focus — 16px minimum */
@@ -154,7 +162,18 @@
 
   .touch-scroll {
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    overscroll-behavior-y: auto;
+    touch-action: pan-y;
+  }
+
+  /* Top-level app shell — document scroll on mobile, no nested scroll trap */
+  .app-shell {
+    @apply w-full;
+  }
+
+  .mobile-page-main {
+    @apply xl:px-8 xl:py-8;
+    touch-action: pan-y;
   }
 
   /* Bottom sheet — fixed height flex column so inner scroll works on iOS */
@@ -224,10 +243,6 @@
 
   .mobile-content-offset {
     @apply pb-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))] xl:pb-0;
-  }
-
-  .mobile-page-main {
-    @apply xl:px-8 xl:py-8;
   }
 
   .mobile-page-main > :not(.mobile-home-shell) {

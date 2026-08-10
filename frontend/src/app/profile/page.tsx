@@ -17,7 +17,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] flex-col xl:min-h-0 xl:max-w-2xl xl:mx-auto">
+    <div className="xl:max-w-2xl xl:mx-auto">
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl safe-top xl:rounded-t-xl">
         <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" asChild>
           <Link href="/" aria-label="Back">

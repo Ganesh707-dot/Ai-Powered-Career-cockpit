@@ -29,6 +29,41 @@ interface ChatMessage {
   content: string;
 }
 
+/** Render AI/user text as readable paragraphs instead of one stacked block. */
+function ChatMessageBody({ content }: { content: string }) {
+  const normalized = content.replace(/\r\n/g, "\n").trim();
+  if (!normalized) return null;
+
+  const paragraphs = normalized.split(/\n{2,}/).filter(Boolean);
+
+  if (paragraphs.length > 1) {
+    return (
+      <div className="space-y-2.5">
+        {paragraphs.map((paragraph, index) => (
+          <p key={index} className="whitespace-pre-wrap break-words">
+            {paragraph.trim()}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
+  const lines = normalized.split(/\n/).filter(Boolean);
+  if (lines.length > 1) {
+    return (
+      <div className="space-y-2">
+        {lines.map((line, index) => (
+          <p key={index} className="whitespace-pre-wrap break-words">
+            {line.replace(/^[-•*]\s*/, "")}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
+  return <p className="whitespace-pre-wrap break-words">{normalized}</p>;
+}
+
 const WELCOME =
   "Tell me what you want — role, salary, remote or onsite, stack. Paste resume text anytime and I'll pick up skills and intent from our chat.";
 
@@ -155,8 +190,10 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
   );
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, thinking]);
+    // On mobile home the page scrolls as one surface — avoid trapping scroll in the chat.
+    if (compact) return;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [messages, thinking, compact]);
 
   const send = async (text: string) => {
     const trimmed = text.trim();
@@ -201,8 +238,10 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
   return (
     <div
       className={cn(
-        "surface-elevated overflow-hidden flex flex-col h-full",
-        compact ? "min-h-[min(44vh,400px)] rounded-2xl" : "min-h-[min(56vh,480px)]"
+        "surface-elevated flex flex-col",
+        compact
+          ? "rounded-2xl touch-pan-y"
+          : "overflow-hidden h-full min-h-[min(56vh,480px)]"
       )}
     >
       <div
@@ -239,10 +278,10 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
           </Badge>
         </div>
         {(searchSummary || resumeInsight || keywords.length > 0) && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {searchSummary && (
               <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs text-primary">
-                {searchSummary}
+                Intent: {searchSummary}
               </span>
             )}
             {keywords.map((k) => (
@@ -259,8 +298,13 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
         )}
       </div>
 
-      <div className="flex flex-1 flex-col min-h-0">
-        <div className="flex-1 overflow-y-auto touch-scroll px-4 py-5 sm:px-6 space-y-4 scrollbar-thin">
+      <div className={cn("flex flex-col", !compact && "flex-1 min-h-0")}>
+        <div
+          className={cn(
+            "px-4 py-5 sm:px-6 space-y-4",
+            !compact && "flex-1 min-h-0 overflow-y-auto touch-scroll scrollbar-thin overscroll-y-contain"
+          )}
+        >
           {messages.length === 0 && !thinking && (
             <div className="rounded-xl border border-border/50 bg-muted/30 px-4 py-4 text-sm text-muted-foreground leading-relaxed animate-fade-in">
               {WELCOME}
@@ -294,7 +338,7 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
                     : "bg-muted/60 border border-border/50 rounded-bl-sm"
                 )}
               >
-                {msg.content}
+                <ChatMessageBody content={msg.content} />
               </div>
             </div>
           ))}
@@ -330,7 +374,7 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
 
         {error && <p className="px-4 pb-2 text-xs text-destructive sm:px-5">{error}</p>}
 
-        <div className="border-t border-border/60 bg-background/60 backdrop-blur-sm safe-bottom">
+        <div className="border-t border-border/60 bg-background/60 backdrop-blur-sm safe-bottom shrink-0">
           <button
             type="button"
             onClick={() => setShowResume((v) => !v)}
@@ -348,7 +392,7 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
                 value={resumeDraft}
                 onChange={(e) => setResumeDraft(e.target.value)}
                 placeholder="Paste experience, skills, projects from your resume…"
-                className="min-h-[100px] text-base md:text-sm rounded-xl resize-none"
+                className="min-h-[100px] text-base md:text-sm rounded-xl resize-none overscroll-y-contain"
               />
               <Button size="sm" variant="secondary" className="rounded-lg" onClick={saveResumeDraft}>
                 Use for matching
