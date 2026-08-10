@@ -10,7 +10,6 @@ import {
   FileText,
   MessageCircle,
   Send,
-  Sparkles,
   User,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
@@ -73,9 +72,10 @@ function applyProfileUpdates(
 interface JobMentorChatProps {
   onJobsUpdate: (jobs: DiscoveredJob[], total: number) => void;
   onTrack: (job: DiscoveredJob) => void;
+  compact?: boolean;
 }
 
-export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
+export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatProps) {
   const profile = useProfileStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -199,8 +199,18 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
   const hasResume = profile.resumeExcerpt.trim().length >= 40;
 
   return (
-    <div className="surface-elevated overflow-hidden flex flex-col h-full min-h-[min(56vh,480px)]">
-      <div className="border-b border-border/60 px-4 py-4 sm:px-6 bg-gradient-to-r from-primary/5 to-transparent">
+    <div
+      className={cn(
+        "surface-elevated overflow-hidden flex flex-col h-full",
+        compact ? "min-h-[min(44vh,400px)] rounded-2xl" : "min-h-[min(56vh,480px)]"
+      )}
+    >
+      <div
+        className={cn(
+          "border-b border-border/60 bg-gradient-to-r from-primary/5 to-transparent",
+          compact ? "px-4 py-3" : "px-4 py-4 sm:px-6"
+        )}
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -209,9 +219,11 @@ export function JobMentorChat({ onJobsUpdate, onTrack }: JobMentorChatProps) {
               </div>
               <h2 className="font-semibold text-base">Job mentor</h2>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground max-w-lg leading-relaxed">
-              Conversation drives everything — intent, keywords, resume, and matches. No forms required.
-            </p>
+            {!compact && (
+              <p className="mt-2 text-sm text-muted-foreground max-w-lg leading-relaxed">
+                Conversation drives everything — intent, keywords, resume, and matches. No forms required.
+              </p>
+            )}
           </div>
           <Badge
             variant={hasResume ? "default" : "outline"}
@@ -365,15 +377,18 @@ export function MentorJobCard({
   job,
   index,
   onTrack,
+  compact,
 }: {
   job: DiscoveredJob;
   index: number;
   onTrack: (job: DiscoveredJob) => void;
+  compact?: boolean;
 }) {
   return (
     <article
       className={cn(
-        "surface-interactive p-4 sm:p-5 opacity-0 animate-fade-in h-full flex flex-col",
+        "surface-interactive opacity-0 animate-fade-in h-full flex flex-col",
+        compact ? "p-3.5 rounded-2xl" : "p-4 sm:p-5",
         index === 0 && "stagger-1",
         index === 1 && "stagger-2",
         index === 2 && "stagger-3",
@@ -382,43 +397,37 @@ export function MentorJobCard({
       )}
       style={{ animationFillMode: "forwards" }}
     >
-      <div className="flex gap-3">
+      <div className={cn("flex gap-3", compact && "flex-col")}>
         <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-primary/10 text-primary">
           <span className="text-lg font-bold tabular-nums">{Math.round(job.match_score)}</span>
           <span className="text-[9px] uppercase opacity-70">fit</span>
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h3 className="font-semibold leading-tight">{job.role}</h3>
-              <p className="text-sm text-muted-foreground">{job.company}</p>
+            <div className="min-w-0">
+              <h3 className="font-semibold leading-tight truncate">{job.role}</h3>
+              <p className="text-sm text-muted-foreground truncate">{job.company}</p>
             </div>
-            <Badge variant="outline" className="text-[10px]">
+            <Badge variant="outline" className="text-[10px] shrink-0">
               {job.source}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            {job.salary_min_lpa}–{job.salary_max_lpa} LPA · {job.location} · {job.work_mode}
+            {job.salary_min_lpa}–{job.salary_max_lpa} LPA · {job.location}
           </p>
-          {job.match_reasons[0] && (
-            <p className="text-[11px] text-primary/90 italic">{job.match_reasons[0]}</p>
+          {job.match_reasons[0] && !compact && (
+            <p className="text-[11px] text-primary/90 italic line-clamp-2">{job.match_reasons[0]}</p>
           )}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button size="sm" onClick={() => onTrack(job)}>
+          <div className={cn("flex flex-wrap gap-2 pt-1", compact && "gap-1.5")}>
+            <Button size="sm" className={compact ? "h-8 text-xs px-2.5" : undefined} onClick={() => onTrack(job)}>
               <Briefcase className="h-3.5 w-3.5" />
               Track
             </Button>
-            <Button size="sm" variant="outline" asChild>
+            <Button size="sm" variant="outline" className={compact ? "h-8 text-xs px-2.5" : undefined} asChild>
               <a href={job.job_url} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-3.5 w-3.5" />
                 Apply
               </a>
-            </Button>
-            <Button size="sm" variant="ghost" asChild>
-              <Link href={`/jd-analysis?prefill=${encodeURIComponent(job.description)}`}>
-                <Sparkles className="h-3.5 w-3.5" />
-                Deep match
-              </Link>
             </Button>
           </div>
         </div>

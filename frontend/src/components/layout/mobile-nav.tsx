@@ -2,25 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { brand, isMobileMoreRoute, mobileTabs, navGroups } from "@/lib/navigation";
+import { MobileTabIcon } from "@/components/mobile/mobile-tab-icon";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useProfileStore } from "@/stores/profile-store";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useProfileSheet } from "@/components/layout/profile-sheet";
 
-function initials(name: string, role: string) {
-  if (name.trim()) {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-  }
-  return role.slice(0, 2).toUpperCase();
-}
+const TILE_GRADIENTS = [
+  "from-violet-500/20 via-violet-500/5 to-transparent",
+  "from-sky-500/20 via-sky-500/5 to-transparent",
+  "from-amber-500/20 via-amber-500/5 to-transparent",
+  "from-emerald-500/20 via-emerald-500/5 to-transparent",
+  "from-rose-500/20 via-rose-500/5 to-transparent",
+  "from-cyan-500/20 via-cyan-500/5 to-transparent",
+];
 
 function MobileMenuGrid({
   pathname,
@@ -30,29 +28,38 @@ function MobileMenuGrid({
   onNavigate: () => void;
 }) {
   const profile = useProfileStore();
+  const { openProfile } = useProfileSheet();
+  let tileIndex = 0;
 
   return (
     <ScrollArea className="flex-1 min-h-0">
-      <div className="px-4 pb-6 pt-1 space-y-6">
-        <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 p-3">
-          <Avatar className="h-10 w-10">
-            <AvatarFallback>
-              {initials(profile.displayName, profile.targetRole)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">
-              {profile.displayName || "Your workspace"}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {profile.targetRole || "Set role via job mentor chat"}
-            </p>
+      <div className="px-4 pb-8 pt-2 space-y-5">
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate();
+            openProfile();
+          }}
+          className="mobile-menu-profile w-full text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="mobile-menu-profile-icon">
+              {(profile.displayName || profile.targetRole).slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate">
+                {profile.displayName || "Your workspace"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {profile.targetRole || "Tap to edit profile & prefs"}
+              </p>
+            </div>
           </div>
-        </div>
+        </button>
 
         {navGroups.map((group) => (
           <section key={group.label}>
-            <h3 className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-2.5 px-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               {group.label}
             </h3>
             <div className="grid grid-cols-2 gap-2.5">
@@ -60,29 +67,28 @@ function MobileMenuGrid({
                 const isActive =
                   pathname === item.href ||
                   (item.href !== "/" && pathname.startsWith(item.href));
+                const gradient = TILE_GRADIENTS[tileIndex++ % TILE_GRADIENTS.length];
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
                     className={cn(
-                      "flex min-h-[72px] flex-col justify-between rounded-xl border p-3 transition-all duration-200 active:scale-[0.98]",
-                      isActive
-                        ? "border-primary/40 bg-primary/10 text-primary"
-                        : "border-border/60 bg-card/80 text-foreground hover:border-primary/25"
+                      "mobile-menu-tile bg-gradient-to-br",
+                      gradient,
+                      isActive && "mobile-menu-tile-active"
                     )}
+                    style={{ animationDelay: `${tileIndex * 40}ms` }}
                   >
-                    <span
-                      className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-lg",
-                        isActive ? "bg-primary/20" : "bg-muted/60"
-                      )}
-                    >
-                      <item.icon className="h-4 w-4" />
+                    <span className="mobile-menu-tile-icon">
+                      <item.icon className="h-5 w-5" />
                     </span>
-                    <span className="text-xs font-medium leading-tight line-clamp-2">
-                      {item.name}
-                    </span>
+                    <span className="text-sm font-medium leading-tight">{item.name}</span>
+                    {item.description && (
+                      <span className="text-[10px] text-muted-foreground line-clamp-1">
+                        {item.description}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -106,16 +112,30 @@ export function MobileMenuSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" hideClose className="p-0 gap-0 bg-background">
+      <SheetContent
+        side="bottom"
+        hideClose
+        className="mobile-menu-sheet p-0 gap-0 bg-background border-t-0"
+      >
         <SheetTitle className="sr-only">All tools</SheetTitle>
-        <div className="flex items-center gap-3 border-b border-border/60 px-4 pb-3 pt-1">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70">
-            <BrandIcon className="h-4 w-4 text-primary-foreground" />
+        <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-1">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="mobile-brand-icon">
+              <BrandIcon className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base font-semibold">Workspace</p>
+              <p className="text-xs text-muted-foreground">All career tools</p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">All tools</p>
-            <p className="text-xs text-muted-foreground">Jump to any workspace module</p>
-          </div>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="mobile-icon-btn shrink-0"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <MobileMenuGrid pathname={pathname} onNavigate={() => onOpenChange(false)} />
       </SheetContent>
@@ -136,10 +156,7 @@ export function MobileNav({
   return (
     <>
       <MobileMenuSheet open={menuOpen} onOpenChange={onMenuOpenChange} />
-      <nav
-        className="mobile-tab-bar lg:hidden"
-        aria-label="Primary navigation"
-      >
+      <nav className="mobile-tab-bar" aria-label="Primary navigation">
         <div className="mobile-tab-bar-inner">
           {mobileTabs.map((tab) => {
             const isActive = tab.match(pathname);
@@ -147,13 +164,9 @@ export function MobileNav({
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={cn(
-                  "mobile-tab-item",
-                  isActive && "mobile-tab-item-active"
-                )}
+                className={cn("mobile-tab-link", isActive && "mobile-tab-link-active")}
               >
-                <tab.icon className="h-5 w-5 shrink-0" aria-hidden />
-                <span>{tab.name}</span>
+                <MobileTabIcon icon={tab.icon} active={isActive} label={tab.name} />
               </Link>
             );
           })}
@@ -161,14 +174,13 @@ export function MobileNav({
             type="button"
             onClick={() => onMenuOpenChange(true)}
             className={cn(
-              "mobile-tab-item",
-              (moreActive || menuOpen) && "mobile-tab-item-active"
+              "mobile-tab-link",
+              (moreActive || menuOpen) && "mobile-tab-link-active"
             )}
             aria-label="Open all tools"
             aria-expanded={menuOpen}
           >
-            <LayoutGrid className="h-5 w-5 shrink-0" aria-hidden />
-            <span>More</span>
+            <MobileTabIcon icon={LayoutGrid} active={moreActive || menuOpen} label="More" />
           </button>
         </div>
       </nav>

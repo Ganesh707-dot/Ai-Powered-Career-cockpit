@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { UserRound, Save } from "lucide-react";
 import { api } from "@/lib/api";
 import {
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -23,14 +24,251 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const ALL_PORTALS = Object.keys(PORTAL_META) as JobPortal[];
 
-export function ProfileSheet() {
+type ProfileSheetContextValue = {
+  openProfile: () => void;
+};
+
+const ProfileSheetContext = createContext<ProfileSheetContextValue>({
+  openProfile: () => undefined,
+});
+
+export function useProfileSheet() {
+  return useContext(ProfileSheetContext);
+};
+
+function initials(name: string, role: string) {
+  if (name.trim()) {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  }
+  return role.slice(0, 2).toUpperCase();
+}
+
+function ProfileEditor({
+  tab,
+  setTab,
+  draft,
+  setDraft,
+  profile,
+  resumes,
+  loadResume,
+  togglePortalDraft,
+  onSave,
+}: {
+  tab: "profile" | "prefs";
+  setTab: (t: "profile" | "prefs") => void;
+  draft: {
+    displayName: string;
+    currentLevel: string;
+    targetRole: string;
+    yearsExperience: number;
+    skills: string;
+    minSalaryLPA: number;
+    maxSalaryLPA: number;
+    preferredLocations: string;
+    workModePref: WorkModePref;
+    aiAssistLevel: AiAssistLevel;
+    enabledPortals: JobPortal[];
+  };
+  setDraft: React.Dispatch<React.SetStateAction<typeof draft>>;
+  profile: ReturnType<typeof useProfileStore.getState>;
+  resumes: Resume[];
+  loadResume: (id: string) => void;
+  togglePortalDraft: (portal: JobPortal) => void;
+  onSave: () => void;
+}) {
+  return (
+    <>
+      <div className="flex shrink-0 gap-1 mx-4 lg:mx-0 rounded-lg bg-muted p-1">
+        {(["profile", "prefs"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={cn(
+              "flex-1 rounded-md py-2.5 text-sm font-medium transition-all duration-200 min-h-[44px]",
+              tab === t ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
+            )}
+          >
+            {t === "profile" ? "Profile" : "Prefs"}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto touch-scroll scrollbar-thin px-4 lg:px-0 py-3 space-y-3 min-h-0">
+        {tab === "profile" ? (
+          <>
+            <div className="space-y-1">
+              <Label>Name</Label>
+              <Input
+                value={draft.displayName}
+                onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
+                placeholder="Your name"
+              />
+            </div>
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Current level</Label>
+                <Input
+                  value={draft.currentLevel}
+                  onChange={(e) => setDraft({ ...draft, currentLevel: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Years experience</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={draft.yearsExperience}
+                  onChange={(e) =>
+                    setDraft({ ...draft, yearsExperience: Number(e.target.value) || 0 })
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Target role</Label>
+              <Input
+                value={draft.targetRole}
+                onChange={(e) => setDraft({ ...draft, targetRole: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Skills (comma-separated)</Label>
+              <Input
+                value={draft.skills}
+                onChange={(e) => setDraft({ ...draft, skills: e.target.value })}
+                placeholder="React, TypeScript, Node.js…"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Link resume (optional)</Label>
+              <select
+                className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base lg:text-sm"
+                value={profile.resumeId ?? ""}
+                onChange={(e) => loadResume(e.target.value)}
+              >
+                <option value="">None</option>
+                {resumes.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                    {r.has_extracted_text ? " · ready" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid gap-3 grid-cols-2">
+              <div className="space-y-1">
+                <Label>Min LPA</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={draft.minSalaryLPA}
+                  onChange={(e) =>
+                    setDraft({ ...draft, minSalaryLPA: Number(e.target.value) || 0 })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Max LPA</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={draft.maxSalaryLPA}
+                  onChange={(e) =>
+                    setDraft({ ...draft, maxSalaryLPA: Number(e.target.value) || 0 })
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Locations</Label>
+              <Input
+                value={draft.preferredLocations}
+                onChange={(e) => setDraft({ ...draft, preferredLocations: e.target.value })}
+                placeholder="Bangalore, Remote"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Work mode</Label>
+              <select
+                className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base lg:text-sm"
+                value={draft.workModePref}
+                onChange={(e) =>
+                  setDraft({ ...draft, workModePref: e.target.value as WorkModePref })
+                }
+              >
+                {(["Any", "Remote", "Hybrid", "Onsite"] as WorkModePref[]).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Job portals</Label>
+              <div className="flex flex-wrap gap-2">
+                {ALL_PORTALS.map((portal) => (
+                  <Badge
+                    key={portal}
+                    variant={draft.enabledPortals.includes(portal) ? "default" : "outline"}
+                    className="cursor-pointer select-none transition-transform active:scale-95 py-1.5 min-h-[32px]"
+                    onClick={() => togglePortalDraft(portal)}
+                  >
+                    {portal}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>AI assist</Label>
+              <select
+                className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base lg:text-sm"
+                value={draft.aiAssistLevel}
+                onChange={(e) =>
+                  setDraft({ ...draft, aiAssistLevel: e.target.value as AiAssistLevel })
+                }
+              >
+                {(Object.keys(AI_ASSIST_LABELS) as AiAssistLevel[]).map((level) => (
+                  <option key={level} value={level}>
+                    {AI_ASSIST_LABELS[level]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="shrink-0 flex flex-col gap-2 px-4 pb-4 pt-2 lg:px-0 lg:pb-0 border-t border-border/60 safe-bottom">
+        <Button onClick={onSave} className="w-full h-11 rounded-lg">
+          <Save className="h-4 w-4" />
+          Save profile
+        </Button>
+      </div>
+    </>
+  );
+}
+
+export function ProfileSheetProvider({ children }: { children: React.ReactNode }) {
   const profile = useProfileStore();
   const [open, setOpen] = useState(false);
-
+  const [isDesktop, setIsDesktop] = useState(false);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [tab, setTab] = useState<"profile" | "prefs">("profile");
   const [draft, setDraft] = useState({
@@ -46,6 +284,14 @@ export function ProfileSheet() {
     aiAssistLevel: profile.aiAssistLevel,
     enabledPortals: [...profile.enabledPortals],
   });
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -108,208 +354,101 @@ export function ProfileSheet() {
     setOpen(false);
   };
 
-  const ready = profile.isReady();
+  const editorProps = {
+    tab,
+    setTab,
+    draft,
+    setDraft,
+    profile,
+    resumes,
+    loadResume,
+    togglePortalDraft,
+    onSave: save,
+  };
+
+  const header = (
+    <div className="shrink-0 px-4 pt-2 pb-3 lg:px-0 lg:pt-0">
+      <h2 className="text-lg font-semibold leading-tight">Career profile</h2>
+      <p className="text-sm text-muted-foreground mt-1">
+        Optional — chat in Job Mentor also builds your profile.
+      </p>
+    </div>
+  );
+
+  return (
+    <ProfileSheetContext.Provider value={{ openProfile: () => setOpen(true) }}>
+      {children}
+
+      {/* Mobile: bottom sheet — user-initiated only */}
+      {!isDesktop && (
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetContent
+            side="bottom"
+            hideClose
+            className="p-0 gap-0 flex flex-col max-h-[min(92dvh,720px)] bg-background"
+          >
+            <SheetTitle className="sr-only">Career profile</SheetTitle>
+            {header}
+            <ProfileEditor {...editorProps} />
+          </SheetContent>
+        </Sheet>
+      )}
+
+      {/* Desktop: centered dialog */}
+      {isDesktop && (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="overflow-hidden flex flex-col p-0 gap-0 max-h-[85vh] lg:p-6 lg:gap-4">
+            <DialogHeader className="shrink-0 px-4 pt-4 lg:px-0 lg:pt-0">
+              <DialogTitle>Career profile & job prefs</DialogTitle>
+              <DialogDescription>
+                Saved on this device. Powers job matching, portal links, and AI features.
+              </DialogDescription>
+            </DialogHeader>
+            <ProfileEditor {...editorProps} />
+          </DialogContent>
+        </Dialog>
+      )}
+    </ProfileSheetContext.Provider>
+  );
+}
+
+export function ProfileSheetTrigger({ className }: { className?: string }) {
+  const profile = useProfileStore();
+  const { openProfile } = useProfileSheet();
 
   return (
     <>
+      {/* Mobile: avatar icon only */}
+      <button
+        type="button"
+        onClick={openProfile}
+        className={cn("lg:hidden mobile-avatar-btn", className)}
+        aria-label="Open profile"
+      >
+        <Avatar className="h-9 w-9 border border-border/60">
+          <AvatarFallback className="bg-muted text-xs font-semibold">
+            {initials(profile.displayName, profile.targetRole)}
+          </AvatarFallback>
+        </Avatar>
+      </button>
+
+      {/* Desktop: text button */}
       <Button
-        variant={ready ? "outline" : "default"}
+        variant="outline"
         size="sm"
-        onClick={() => setOpen(true)}
-        className="gap-1.5 text-xs sm:text-sm rounded-lg min-h-9"
+        onClick={openProfile}
+        className={cn("hidden lg:inline-flex gap-1.5 text-sm rounded-lg min-h-9", className)}
       >
         <UserRound className="h-4 w-4" />
-        <span className="hidden sm:inline max-w-[80px] md:max-w-none truncate">
-          {ready ? profile.displayName || "Profile" : "Setup"}
+        <span className="max-w-[120px] truncate">
+          {profile.displayName || "Profile"}
         </span>
       </Button>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="overflow-hidden flex flex-col p-0 gap-0 max-h-[min(90dvh,720px)] md:max-h-[85vh] md:p-6 md:gap-4">
-          <DialogHeader className="shrink-0 px-4 pt-4 md:px-0 md:pt-0">
-            <DialogTitle>Career profile & job prefs</DialogTitle>
-            <DialogDescription>
-              Saved on this device. Powers job matching, portal links, and AI features.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex shrink-0 gap-1 mx-4 md:mx-0 rounded-lg bg-muted p-1">
-            {(["profile", "prefs"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={cn(
-                  "flex-1 rounded-md py-2.5 text-sm font-medium transition-all duration-200 min-h-[44px]",
-                  tab === t ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"
-                )}
-              >
-                {t === "profile" ? "Profile" : "Prefs"}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex-1 overflow-y-auto touch-scroll scrollbar-thin px-4 md:px-0 py-3 space-y-3 min-h-0">
-            {tab === "profile" ? (
-              <>
-                <div className="space-y-1">
-                  <Label>Name</Label>
-                  <Input
-                    value={draft.displayName}
-                    onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
-                    placeholder="Your name"
-                  />
-                </div>
-                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label>Current level</Label>
-                    <Input
-                      value={draft.currentLevel}
-                      onChange={(e) => setDraft({ ...draft, currentLevel: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Years experience</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      inputMode="numeric"
-                      value={draft.yearsExperience}
-                      onChange={(e) =>
-                        setDraft({ ...draft, yearsExperience: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label>Target role</Label>
-                  <Input
-                    value={draft.targetRole}
-                    onChange={(e) => setDraft({ ...draft, targetRole: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Skills (comma-separated) *</Label>
-                  <Input
-                    value={draft.skills}
-                    onChange={(e) => setDraft({ ...draft, skills: e.target.value })}
-                    placeholder="React, TypeScript, Node.js…"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Link resume (optional)</Label>
-                  <select
-                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base md:text-sm"
-                    value={profile.resumeId ?? ""}
-                    onChange={(e) => loadResume(e.target.value)}
-                  >
-                    <option value="">None</option>
-                    {resumes.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                        {r.has_extracted_text ? " · ready" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="grid gap-3 grid-cols-2">
-                  <div className="space-y-1">
-                    <Label>Min LPA</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      inputMode="numeric"
-                      value={draft.minSalaryLPA}
-                      onChange={(e) =>
-                        setDraft({ ...draft, minSalaryLPA: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Max LPA</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      inputMode="numeric"
-                      value={draft.maxSalaryLPA}
-                      onChange={(e) =>
-                        setDraft({ ...draft, maxSalaryLPA: Number(e.target.value) || 0 })
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label>Locations</Label>
-                  <Input
-                    value={draft.preferredLocations}
-                    onChange={(e) =>
-                      setDraft({ ...draft, preferredLocations: e.target.value })
-                    }
-                    placeholder="Bangalore, Remote"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Work mode</Label>
-                  <select
-                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base md:text-sm"
-                    value={draft.workModePref}
-                    onChange={(e) =>
-                      setDraft({ ...draft, workModePref: e.target.value as WorkModePref })
-                    }
-                  >
-                    {(["Any", "Remote", "Hybrid", "Onsite"] as WorkModePref[]).map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Job portals</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {ALL_PORTALS.map((portal) => (
-                      <Badge
-                        key={portal}
-                        variant={draft.enabledPortals.includes(portal) ? "default" : "outline"}
-                        className="cursor-pointer select-none transition-transform active:scale-95 py-1.5 min-h-[32px]"
-                        onClick={() => togglePortalDraft(portal)}
-                      >
-                        {portal}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label>AI assist</Label>
-                  <select
-                    className="flex h-11 w-full rounded-lg border border-input bg-background px-3 text-base md:text-sm"
-                    value={draft.aiAssistLevel}
-                    onChange={(e) =>
-                      setDraft({ ...draft, aiAssistLevel: e.target.value as AiAssistLevel })
-                    }
-                  >
-                    {(Object.keys(AI_ASSIST_LABELS) as AiAssistLevel[]).map((level) => (
-                      <option key={level} value={level}>
-                        {AI_ASSIST_LABELS[level]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="shrink-0 flex flex-col gap-2 px-4 pb-4 pt-2 md:px-0 md:pb-0 border-t border-border/60 safe-bottom">
-            <Button onClick={save} className="w-full h-11 rounded-lg">
-              <Save className="h-4 w-4" />
-              Save profile
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
+}
+
+/** @deprecated use ProfileSheetProvider + ProfileSheetTrigger */
+export function ProfileSheet() {
+  return <ProfileSheetTrigger />;
 }

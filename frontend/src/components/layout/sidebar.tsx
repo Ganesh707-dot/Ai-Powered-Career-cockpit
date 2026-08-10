@@ -24,7 +24,7 @@ export function Sidebar() {
   const BrandIcon = brand.icon;
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] flex-col border-r border-sidebar-border bg-sidebar/95 backdrop-blur-xl max-lg:!hidden lg:flex">
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/20">
           <BrandIcon className="h-4 w-4 text-primary-foreground" />
