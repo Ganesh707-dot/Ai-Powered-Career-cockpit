@@ -48,6 +48,51 @@ export interface ApplicationListResponse {
   total: number;
 }
 
+export interface DiscoveredJob {
+  id: string;
+  company: string;
+  role: string;
+  source: JobSource;
+  salary_min_lpa: number;
+  salary_max_lpa: number;
+  experience_years: string;
+  location: string;
+  work_mode: WorkMode;
+  skills: string[];
+  description: string;
+  job_url: string;
+  posted_days_ago: number;
+  match_score: number;
+  match_reasons: string[];
+}
+
+export interface JobDiscoveryResponse {
+  items: DiscoveredJob[];
+  total: number;
+  filters_applied: Record<string, string | number | string[]>;
+}
+
+export interface InferredSearchIntent {
+  target_role: string;
+  min_salary_lpa: number | null;
+  max_salary_lpa: number | null;
+  preferred_locations: string[];
+  work_mode: string;
+  sources: string[];
+  skills_emphasis: string[];
+  natural_summary: string;
+}
+
+export interface JobMentorChatResponse {
+  reply: string;
+  search_summary: string;
+  inferred_intent: InferredSearchIntent;
+  jobs: DiscoveredJob[];
+  total_matches: number;
+  resume_used: boolean;
+  resume_insight: string | null;
+}
+
 export interface DashboardStats {
   total_applications: number;
   today_applications: number;

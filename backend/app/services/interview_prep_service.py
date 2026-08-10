@@ -80,8 +80,8 @@ JSON:{{"questions":[{{"question":"","expected_answer":"","evaluation_criteria":"
             question = str(item.get("question") or "").strip()
             if not question:
                 continue
-            questions.append(
-                InterviewQuestion(
+                questions.append(
+                    InterviewQuestion(
                     question=question,
                     expected_answer=str(item.get("expected_answer") or "").strip(),
                     evaluation_criteria=str(item.get("evaluation_criteria") or "").strip(),

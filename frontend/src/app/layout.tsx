@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -6,9 +6,15 @@ import { AppLayout } from "@/components/layout/app-layout";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CareerPilot AI — Personal Career Operating System",
+  title: "CareerPilot AI — Personal Career Cockpit",
   description:
-    "Job search management, interview preparation, and career analytics for software engineers.",
+    "Job search command center — match roles, search LinkedIn/Naukri/Indeed, track applications, and AI prep.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

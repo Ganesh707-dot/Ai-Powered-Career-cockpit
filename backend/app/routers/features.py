@@ -19,6 +19,8 @@ from app.schemas.interview_prep import (
     MockInterviewRequest,
     MockInterviewResponse,
 )
+from app.schemas.job_discovery import JobDiscoveryRequest, JobDiscoveryResponse
+from app.schemas.job_mentor import JobMentorChatRequest, JobMentorChatResponse
 from app.schemas.mentor import (
     LearningPathRequest,
     LearningPathResponse,
@@ -30,6 +32,8 @@ from app.services.career_coach_service import CareerCoachService
 from app.services.dashboard_service import DashboardService
 from app.services.interview_prep_service import InterviewPrepService
 from app.services.jd_analysis_service import JDAnalysisService
+from app.services.job_discovery_service import JobDiscoveryService
+from app.services.job_mentor_service import JobMentorService
 from app.services.learning_path_service import LearningPathService
 from app.services.mentor_service import MentorService
 
@@ -135,6 +139,16 @@ def generate_learning_path(
     return LearningPathService(db).generate(request)
 
 
+@router.post("/job-discovery", response_model=JobDiscoveryResponse)
+def discover_jobs(request: JobDiscoveryRequest):
+    return JobDiscoveryService().discover(request)
+
+
+@router.post("/job-mentor/chat", response_model=JobMentorChatResponse)
+def job_mentor_chat(request: JobMentorChatRequest):
+    return JobMentorService().chat(request)
+
+
 @router.get("/ai-status")
 def ai_status():
     from app.config import settings
@@ -156,5 +170,7 @@ def ai_status():
             "mentor-stream",
             "learning-path",
             "mock-interview",
+            "job-discovery",
+            "job-mentor",
         ],
     }
