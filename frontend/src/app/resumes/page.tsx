@@ -18,7 +18,9 @@ import {
 } from "@/components/ui/select";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -287,7 +289,11 @@ export default function ResumesPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Resume" : "Add Resume"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-1 flex-col min-h-0 overflow-hidden"
+          >
+            <DialogBody className="space-y-4">
             <div className="space-y-2">
               <Label>Name *</Label>
               <Input
@@ -344,12 +350,13 @@ export default function ResumesPage() {
                 rows={3}
               />
             </div>
-            <div className="flex justify-end gap-2">
+            </DialogBody>
+            <DialogFooter className="modal-footer-stacked">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit">{editing ? "Save" : "Create"}</Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

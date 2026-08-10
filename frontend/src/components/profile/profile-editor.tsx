@@ -89,8 +89,8 @@ export function ProfileEditor({
 
       <div
         className={cn(
-          "py-3 space-y-3 px-4",
-          isPage ? "flex-1 overflow-y-auto touch-scroll scrollbar-thin pb-24" : "sheet-body-scroll xl:px-0"
+          "modal-body",
+          isPage && "pb-28 xl:pb-4"
         )}
       >
         {tab === "profile" ? (
@@ -245,10 +245,9 @@ export function ProfileEditor({
 
       <div
         className={cn(
-          "shrink-0 flex flex-col gap-2 px-4 border-t border-border/60 bg-background/95 backdrop-blur-sm safe-bottom",
-          isPage
-            ? "fixed inset-x-0 bottom-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))] xl:static xl:pb-4 pt-3 z-20"
-            : "sheet-bottom-footer xl:px-0 xl:pb-0 pt-2"
+          "modal-footer modal-footer-stacked",
+          isPage &&
+            "fixed inset-x-0 bottom-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))] xl:static z-20"
         )}
       >
         <Button onClick={onSave} className="w-full h-11 rounded-lg">

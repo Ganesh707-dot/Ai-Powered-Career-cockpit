@@ -24,7 +24,9 @@ import {
 } from "@/components/ui/select";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -325,7 +327,11 @@ export default function LearningPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Topic" : "Add Topic"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-1 flex-col min-h-0 overflow-hidden"
+          >
+            <DialogBody className="space-y-4">
             <div className="space-y-2">
               <Label>Title *</Label>
               <Input
@@ -384,12 +390,13 @@ export default function LearningPage() {
                 rows={3}
               />
             </div>
-            <div className="flex justify-end gap-2">
+            </DialogBody>
+            <DialogFooter className="modal-footer-stacked">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit">{editing ? "Save" : "Create"}</Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

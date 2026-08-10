@@ -17,7 +17,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm",
+      "fixed inset-0 z-[100] bg-black/60 backdrop-blur-[2px]",
       "data-[state=open]:animate-in data-[state=closed]:animate-out",
       "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       "duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
@@ -28,44 +28,49 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+  size?: "default" | "lg" | "full";
+};
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  DialogContentProps
+>(({ className, size = "default", children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-[101] flex flex-col w-full gap-4 border border-border/80 bg-background shadow-2xl outline-none",
+        "modal-shell fixed z-[101] flex flex-col overflow-hidden bg-background shadow-2xl outline-none",
         "duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
-        /* Phone & small tablet: bottom sheet (up to md / 768px) */
-        "inset-x-0 bottom-0 top-auto max-h-[90dvh] rounded-t-2xl",
-        "pb-[max(1rem,env(safe-area-inset-bottom))]",
-        "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        /* Laptop+ : centered modal */
-        "md:inset-x-auto md:bottom-auto md:left-[50%] md:top-[50%] md:max-w-lg md:max-h-[85vh]",
-        "md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-xl md:p-6",
-        "md:data-[state=closed]:slide-out-to-bottom-0 md:data-[state=open]:slide-in-from-bottom-0",
-        "md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95",
-        "md:data-[state=closed]:slide-out-to-left-1/2 md:data-[state=closed]:slide-out-to-top-[48%]",
-        "md:data-[state=open]:slide-in-from-left-1/2 md:data-[state=open]:slide-in-from-top-[48%]",
+        /* Phone & tablet: bottom sheet */
+        "max-xl:inset-x-0 max-xl:bottom-0 max-xl:top-auto max-xl:modal-shell-bottom",
+        "max-xl:data-[state=closed]:slide-out-to-bottom max-xl:data-[state=open]:slide-in-from-bottom",
+        /* Desktop: centered */
+        "xl:inset-x-auto xl:bottom-auto xl:left-1/2 xl:top-1/2 xl:-translate-x-1/2 xl:-translate-y-1/2",
+        "xl:modal-shell-center xl:rounded-xl xl:border xl:border-border/80",
+        "xl:data-[state=closed]:zoom-out-95 xl:data-[state=open]:zoom-in-95",
+        "xl:data-[state=closed]:slide-out-to-left-1/2 xl:data-[state=closed]:slide-out-to-top-[48%]",
+        "xl:data-[state=open]:slide-in-from-left-1/2 xl:data-[state=open]:slide-in-from-top-[48%]",
+        size === "default" && "xl:max-w-lg",
+        size === "lg" && "xl:max-w-2xl",
+        size === "full" && "xl:max-w-3xl",
         className
       )}
       {...props}
     >
       <div
-        className="mx-auto mt-3 mb-0 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30 md:hidden"
+        className="mx-auto mt-2.5 mb-0 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/35 xl:hidden"
         aria-hidden
       />
       {children}
       <DialogPrimitive.Close
         className={cn(
-          "absolute right-3 top-3 md:right-4 md:top-4",
+          "absolute right-3 top-3 xl:right-4 xl:top-4 z-10",
           "flex h-11 w-11 items-center justify-center rounded-full",
-          "bg-muted/80 text-foreground/80",
+          "bg-muted/90 text-foreground/90 border border-border/50",
           "transition-all duration-200 hover:bg-muted active:scale-95",
           "focus:outline-none focus:ring-2 focus:ring-ring"
         )}
@@ -82,9 +87,25 @@ const DialogHeader = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-1.5 pr-14 text-left", className)} {...props} />
+  <div className={cn("modal-header", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
+
+const DialogBody = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("modal-body", className)} {...props} />
+);
+DialogBody.displayName = "DialogBody";
+
+const DialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("modal-footer", className)} {...props} />
+);
+DialogFooter.displayName = "DialogFooter";
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
@@ -92,7 +113,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-tight tracking-tight", className)}
+    className={cn("text-base xl:text-lg font-semibold leading-tight tracking-tight", className)}
     {...props}
   />
 ));
@@ -104,7 +125,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground leading-relaxed", className)}
+    className={cn("text-sm text-muted-foreground leading-relaxed mt-1", className)}
     {...props}
   />
 ));
@@ -118,6 +139,8 @@ export {
   DialogClose,
   DialogContent,
   DialogHeader,
+  DialogBody,
+  DialogFooter,
   DialogTitle,
   DialogDescription,
 };

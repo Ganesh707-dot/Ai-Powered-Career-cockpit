@@ -159,7 +159,7 @@
 
   /* Bottom sheet — fixed height flex column so inner scroll works on iOS */
   .sheet-bottom {
-    height: min(92dvh, 720px);
+    height: min(92dvh, 820px);
     max-height: 92dvh;
     @apply overflow-hidden rounded-t-2xl border-t border-border/70 pb-[env(safe-area-inset-bottom,0px)];
   }
@@ -172,6 +172,45 @@
     @apply flex-1 min-h-0 overflow-y-auto overflow-x-hidden touch-scroll scrollbar-thin;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
+    touch-action: pan-y;
+  }
+
+  /* Enterprise modal / bottom sheet (Dialog + Sheet) */
+  .modal-shell-bottom {
+    height: min(92dvh, 820px);
+    max-height: 92dvh;
+    border-top: 1px solid hsl(var(--border) / 0.7);
+    border-radius: 1rem 1rem 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .modal-shell-center {
+    width: min(calc(100vw - 2rem), 32rem);
+    max-height: min(85dvh, 720px);
+  }
+
+  .modal-header {
+    @apply shrink-0 px-4 pt-2 pb-3 pr-14 border-b border-border/50 bg-background/95;
+  }
+
+  .modal-body {
+    @apply flex-1 min-h-0 overflow-y-auto overflow-x-hidden touch-scroll scrollbar-thin px-4 py-4;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+  }
+
+  .modal-footer {
+    @apply shrink-0 flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-border/60 bg-background/95 backdrop-blur-md;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .modal-footer-stacked {
+    @apply flex-col sm:flex-row sm:justify-end;
+  }
+
+  .modal-footer-stacked > button {
+    @apply w-full sm:w-auto min-h-11;
   }
 
   .sheet-bottom-footer {

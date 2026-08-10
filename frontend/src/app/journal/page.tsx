@@ -19,7 +19,9 @@ import {
 } from "@/components/ui/select";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -191,12 +193,16 @@ export default function JournalPage() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Entry" : "Log Interview"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-1 flex-col min-h-0 overflow-hidden"
+          >
+            <DialogBody>
+              <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Company *</Label>
                 <Input {...form.register("company", { required: true })} />
@@ -250,13 +256,14 @@ export default function JournalPage() {
                   <Textarea {...form.register(field)} rows={2} />
                 </div>
               ))}
-            </div>
-            <div className="flex justify-end gap-2">
+              </div>
+            </DialogBody>
+            <DialogFooter className="modal-footer-stacked">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit">{editing ? "Save" : "Create"}</Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
