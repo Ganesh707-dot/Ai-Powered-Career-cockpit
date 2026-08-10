@@ -13,10 +13,10 @@ export function MobileNav() {
 
   return (
     <nav
-      className="fixed bottom-4 left-4 right-4 z-50 lg:hidden safe-bottom"
+      className="fixed bottom-4 left-4 right-4 z-40 lg:hidden safe-bottom pointer-events-none"
       aria-label="Primary navigation"
     >
-      <div className="mobile-dock-blur mx-auto flex max-w-md items-stretch justify-around rounded-2xl border border-border/60 px-1 py-1.5 shadow-2xl shadow-black/40">
+      <div className="mobile-dock-blur pointer-events-auto mx-auto flex max-w-md items-stretch justify-around rounded-2xl border border-border/60 px-1 py-1.5 shadow-2xl shadow-black/40 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]">
         {navigation
           .filter((item) => item.mobilePrimary)
           .map((item) => {

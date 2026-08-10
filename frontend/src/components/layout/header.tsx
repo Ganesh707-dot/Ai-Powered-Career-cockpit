@@ -21,7 +21,7 @@ export function Header() {
   return (
     <>
       <MobileSidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl safe-top">
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-xl safe-top">
         <div className="flex h-14 lg:h-[4.25rem] items-center justify-between gap-3 px-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <Button
