@@ -88,7 +88,7 @@ export function ProfileEditor({
 
       <div
         className={cn(
-          isPage ? "px-4 py-4 space-y-3 pb-28 xl:pb-4" : "modal-body"
+          isPage ? "px-4 py-4 space-y-3 pb-4 xl:pb-4" : "modal-body"
         )}
       >
         {tab === "profile" ? (
@@ -245,7 +245,7 @@ export function ProfileEditor({
         className={cn(
           "modal-footer modal-footer-stacked",
           isPage &&
-            "fixed inset-x-0 bottom-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))] xl:static z-20"
+            "sticky bottom-[var(--app-bottom-safe)] xl:static xl:bottom-auto z-20 mt-4 xl:mt-0"
         )}
       >
         <Button onClick={onSave} className="w-full h-11 rounded-lg">

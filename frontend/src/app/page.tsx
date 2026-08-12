@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { buildPortalSearchUrl, PORTAL_META } from "@/lib/job-portals";
 import { formatRelativeTime } from "@/lib/utils";
 import { useProfileStore } from "@/stores/profile-store";
+import { useJobContextStore } from "@/stores/job-context-store";
 import type { DashboardResponse, DiscoveredJob } from "@/types";
 import { JobMentorChat, MentorJobCard } from "@/components/cockpit/job-mentor-chat";
 import { MobileHome } from "@/components/mobile/mobile-home";
@@ -48,8 +49,19 @@ export default function CareerCockpitPage() {
   }, []);
 
   const trackJob = async (job: DiscoveredJob) => {
+    const jobCtx = useJobContextStore.getState();
+    const key = jobCtx.jobKey(job.company, job.role);
+    jobCtx.upsertContext({
+      key,
+      company: job.company,
+      role: job.role,
+      intent: job.match_reasons.join("; "),
+      skillsFocus: job.skills,
+      strengths: profile.skillsList(),
+      weaknesses: [],
+    });
     try {
-      await api.post("/applications", {
+      const app = await api.post<{ id: number }>("/applications", {
         company: job.company,
         role: job.role,
         job_url: job.job_url,
@@ -63,6 +75,9 @@ export default function CareerCockpitPage() {
         status: "Saved",
         notes: `Mentor match ${job.match_score}% — ${job.match_reasons.join("; ")}`,
       });
+      if (app?.id) {
+        jobCtx.upsertContext({ key: jobCtx.jobKey(job.company, job.role, app.id), applicationId: app.id, company: job.company, role: job.role });
+      }
     } catch (e) {
       console.error(e);
     }

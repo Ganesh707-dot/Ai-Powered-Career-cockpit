@@ -32,6 +32,10 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 0%;
+    /* Layout — must live on :root so tab bar offset works everywhere */
+    --mobile-tab-height: 4rem;
+    --app-bottom-safe: calc(var(--mobile-tab-height) + env(safe-area-inset-bottom, 0px));
+    --app-header-mobile: 3rem;
   }
 }
 
@@ -171,11 +175,6 @@
     @apply w-full;
   }
 
-  .mobile-page-main {
-    @apply xl:px-8 xl:py-8;
-    touch-action: pan-y;
-  }
-
   /* Bottom sheet — fixed height flex column so inner scroll works on iOS */
   .sheet-bottom {
     height: min(92dvh, 820px);
@@ -242,7 +241,19 @@
   }
 
   .mobile-content-offset {
-    @apply pb-[calc(var(--mobile-tab-height)+env(safe-area-inset-bottom,0px))] xl:pb-0;
+    @apply pb-[var(--app-bottom-safe)] xl:pb-0;
+  }
+
+  .mobile-page-main {
+    @apply xl:px-8 xl:py-8 min-h-0;
+    touch-action: pan-y;
+    padding-bottom: var(--app-bottom-safe);
+  }
+
+  @media (min-width: 1280px) {
+    .mobile-page-main {
+      padding-bottom: 0;
+    }
   }
 
   .mobile-page-main > :not(.mobile-home-shell) {
@@ -292,7 +303,6 @@
   .mobile-tab-bar {
     @apply fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-background/95 backdrop-blur-2xl;
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    --mobile-tab-height: 4rem;
     box-shadow: 0 -8px 32px hsl(0 0% 0% / 0.35);
   }
 

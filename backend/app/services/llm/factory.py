@@ -15,6 +15,15 @@ def create_llm():
 
         return OpenAIProvider()
 
+    if provider == "groq":
+        from app.services.llm.openai_provider import OpenAIProvider
+
+        return OpenAIProvider(
+            api_key=settings.groq_api_key,
+            model=settings.groq_model,
+            base_url="https://api.groq.com/openai/v1",
+        )
+
     from app.services.ai_client import GeminiClient
 
     return GeminiClient()

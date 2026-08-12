@@ -32,10 +32,12 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./careerpilot.db"
     # Stored as string so Vercel/Render env vars don't need JSON encoding
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
-    # AI provider: "gemini" (default/free) or "openai" (swap later for GPT)
+    # AI provider: "gemini" | "groq" | "openai"
     ai_provider: str = "gemini"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash-lite"
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     openai_base_url: str = "https://api.openai.com/v1"
@@ -66,6 +68,8 @@ class Settings(BaseSettings):
         provider = (self.ai_provider or "gemini").strip().lower()
         if provider == "openai":
             return bool(self.openai_api_key.strip())
+        if provider == "groq":
+            return bool(self.groq_api_key.strip())
         return bool(self.gemini_api_key.strip())
 
 

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { FileText, Pencil, Plus, Trash2, Upload, Sparkles } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { useProfileStore } from "@/stores/profile-store";
+import { useResumeStore, storedToResume } from "@/stores/resume-store";
 import type { Resume, ResumeListResponse, ResumeType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +41,8 @@ const RESUME_TYPES: ResumeType[] = [
 ];
 
 export default function ResumesPage() {
+  const profile = useProfileStore();
+  const resumeStore = useResumeStore();
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -60,9 +64,12 @@ export default function ResumesPage() {
     setLoading(true);
     try {
       const data = await api.get<ResumeListResponse>("/resumes");
-      setResumes(data.items);
+      const merged = resumeStore.mergeWithApi(data.items);
+      setResumes(merged.map(storedToResume));
     } catch (err) {
       console.error(err);
+      const cached = resumeStore.items;
+      if (cached.length) setResumes(cached.map(storedToResume));
     } finally {
       setLoading(false);
     }
@@ -119,7 +126,15 @@ export default function ResumesPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this resume version?")) return;
-    await api.delete(`/resumes/${id}`);
+    try {
+      await api.delete(`/resumes/${id}`);
+    } catch {
+      /* keep local copy if API DB was reset */
+    }
+    resumeStore.remove(id);
+    if (profile.resumeId === id) {
+      profile.setResume(null, "", "");
+    }
     fetchResumes();
   };
 
@@ -132,7 +147,18 @@ export default function ResumesPage() {
       fd.append("file", file);
       fd.append("name", file.name.replace(/\.[^.]+$/, ""));
       fd.append("resume_type", "Full Stack Resume");
-      await api.upload<Resume>("/resumes/upload", fd);
+      const uploaded = await api.upload<Resume>("/resumes/upload", fd);
+      let excerpt = "";
+      try {
+        const textRes = await api.get<{ extracted_text: string }>(`/resumes/${uploaded.id}/text`);
+        excerpt = textRes.extracted_text.slice(0, 50000);
+      } catch {
+        if (file.type.startsWith("text/") || file.name.endsWith(".txt")) {
+          excerpt = (await file.text()).slice(0, 50000);
+        }
+      }
+      resumeStore.upsertFromApi(uploaded, excerpt);
+      profile.setResume(uploaded.id, uploaded.name, excerpt.slice(0, 5000));
       await fetchResumes();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Upload failed");
@@ -176,7 +202,7 @@ export default function ResumesPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-6">
       <div className="flex flex-wrap justify-end gap-2">
         <input
           ref={fileRef}

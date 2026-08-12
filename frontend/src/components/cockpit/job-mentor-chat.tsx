@@ -15,6 +15,8 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { isAbortError, useLatestRequest } from "@/lib/use-latest-request";
 import { useProfileStore } from "@/stores/profile-store";
+import { useResumeStore } from "@/stores/resume-store";
+import { useJobContextStore } from "@/stores/job-context-store";
 import type { DiscoveredJob, JobMentorChatResponse, ProfileUpdates } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,7 +127,14 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
   const latest = useLatestRequest();
 
   useEffect(() => {
-    if (!profile.resumeId || profile.resumeExcerpt.trim().length >= 40) return;
+    if (!profile.resumeId) return;
+    const cached = useResumeStore.getState().getById(profile.resumeId);
+    if (cached?.extracted_text && profile.resumeExcerpt.trim().length < 40) {
+      profile.setResume(profile.resumeId, cached.name, cached.extracted_text.slice(0, 5000));
+      setResumeDraft(cached.extracted_text.slice(0, 5000));
+      return;
+    }
+    if (profile.resumeExcerpt.trim().length >= 40) return;
     api
       .get<{ extracted_text: string }>(`/resumes/${profile.resumeId}/text`)
       .then((data) => {
@@ -136,6 +145,17 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
             data.extracted_text.slice(0, 5000)
           );
           setResumeDraft(data.extracted_text.slice(0, 5000));
+          if (profile.resumeId) {
+            useResumeStore.getState().upsertFromApi(
+              {
+                id: profile.resumeId,
+                name: profile.resumeName,
+                resume_type: "Full Stack Resume",
+                has_extracted_text: true,
+              } as import("@/types").Resume,
+              data.extracted_text
+            );
+          }
         }
       })
       .catch(() => undefined);
@@ -166,15 +186,34 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
   );
 
   const handleMentorResponse = useCallback(
-    (res: JobMentorChatResponse) => {
+    (res: JobMentorChatResponse, history: ChatMessage[]) => {
       setSearchSummary(res.search_summary);
       setResumeInsight(res.resume_insight);
       setKeywords(res.keywords || []);
       applyProfileUpdates(useProfileStore.getState(), res.profile_updates);
+
+      const jobContext = useJobContextStore.getState();
+      jobContext.setGlobalInsights({
+        intent: res.search_summary || res.inferred_intent?.natural_summary || "",
+        strengths: res.profile_updates?.skills || profile.skillsList(),
+      });
+
+      const lastUser = [...history].reverse().find((m) => m.role === "user");
+      if (lastUser) {
+        jobContext.appendMentorMessage("global-career-map", {
+          role: "user",
+          content: lastUser.content,
+        });
+      }
+      jobContext.appendMentorMessage("global-career-map", {
+        role: "assistant",
+        content: res.reply,
+      });
+
       onJobsUpdate(res.jobs, res.total_matches);
       return res.reply;
     },
-    [onJobsUpdate]
+    [onJobsUpdate, profile.skillsList]
   );
 
   const callMentor = useCallback(
@@ -184,7 +223,7 @@ export function JobMentorChat({ onJobsUpdate, onTrack, compact }: JobMentorChatP
         buildPayload(history),
         { signal }
       );
-      return handleMentorResponse(res);
+      return handleMentorResponse(res, history);
     },
     [buildPayload, handleMentorResponse]
   );

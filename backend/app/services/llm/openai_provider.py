@@ -38,6 +38,8 @@ class OpenAIProvider:
 
     @property
     def provider_name(self) -> str:
+        if "groq.com" in self.base_url:
+            return "groq"
         return "openai"
 
     @property

@@ -23,7 +23,7 @@ export function AiStatusBar({
         <>
           <Badge variant="secondary" className="gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
-            {label || "Gemini working…"}
+            {label || "AI working…"}
           </Badge>
           {onCancel && (
             <Button type="button" size="sm" variant="outline" onClick={onCancel}>

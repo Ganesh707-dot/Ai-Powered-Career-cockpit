@@ -12,7 +12,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="app-shell min-h-[100dvh] app-mesh">
           {/* Desktop sidebar only — never shown on mobile */}
           <Sidebar />
-          <div className="w-full xl:pl-[260px] mobile-content-offset">
+          <div className="w-full xl:pl-[260px]">
             <Header />
             <main className="mobile-page-main page-enter min-w-0">{children}</main>
           </div>
