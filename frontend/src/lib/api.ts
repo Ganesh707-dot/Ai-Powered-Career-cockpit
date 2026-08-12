@@ -2,8 +2,12 @@ const PUBLIC_BACKEND_FALLBACK = "https://careerpilot-api.vercel.app";
 
 import { getWorkspaceId } from "@/lib/workspace-id";
 
-/** Resolve API base for browser + server. Prefer explicit public URL in production. */
+/** Browser uses same-origin proxy so site-lock cookie protects API rewrites too. */
 function resolveApiBase(): string {
+  if (typeof window !== "undefined") {
+    return "/api/v1";
+  }
+
   const explicit = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
   if (explicit?.startsWith("http")) return explicit;
 
@@ -46,6 +50,7 @@ async function request<T>(
   const res = await fetch(url, {
     ...options,
     headers,
+    credentials: "include",
   });
 
   if (!res.ok) {
@@ -104,6 +109,7 @@ export async function streamMentorChat(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     signal,
+    credentials: "include",
   });
   if (!res.ok || !res.body) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
