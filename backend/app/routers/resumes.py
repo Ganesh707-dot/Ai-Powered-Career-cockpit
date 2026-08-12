@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import ensure_resume_schema, get_db
 from app.models.resume import ResumeType
 from app.repositories.resume_repository import ResumeRepository
 from app.schemas.resume import (
@@ -27,7 +27,7 @@ def _to_response(resume) -> ResumeResponse:
     return ResumeResponse(
         id=resume.id,
         name=resume.name,
-        resume_type=resume.resume_type,
+        resume_type=ResumeType.coerce(resume.resume_type),
         target_role=resume.target_role,
         skills_highlighted=resume.skills_highlighted,
         notes=resume.notes,
@@ -75,8 +75,55 @@ def get_resume_text(resume_id: int, db: Session = Depends(get_db)):
 
 @router.post("", response_model=ResumeResponse, status_code=201)
 def create_resume(data: ResumeCreate, db: Session = Depends(get_db)):
+    ensure_resume_schema()
     repo = ResumeRepository(db)
-    resume = repo.create(data)
+    try:
+        resume = repo.create(data)
+    except Exception as exc:
+        logger.exception("Resume create DB error")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save resume to database. Try again or paste text instead.",
+        ) from exc
+    return _to_response(resume)
+
+
+@router.post("/paste", response_model=ResumeResponse, status_code=201)
+def paste_resume(
+    name: str = Form(...),
+    text: str = Form(...),
+    resume_type: str = Form("Full Stack Resume"),
+    target_role: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Save pasted resume or personal statement text (no file required)."""
+    body = text.strip()
+    if len(body) < 20:
+        raise HTTPException(
+            status_code=400,
+            detail="Paste at least 20 characters of resume or statement text.",
+        )
+    ensure_resume_schema()
+    rtype = ResumeType.coerce(resume_type)
+    repo = ResumeRepository(db)
+    try:
+        resume = repo.create(
+            ResumeCreate(
+                name=name.strip() or "Pasted resume",
+                resume_type=ResumeType(rtype),
+                target_role=target_role,
+                extracted_text=body[:50000],
+                original_filename="pasted.txt",
+                last_updated=date.today(),
+                notes="Pasted resume / statement text",
+            )
+        )
+    except Exception as exc:
+        logger.exception("Resume paste DB error")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save resume to database. Try again in a few seconds.",
+        ) from exc
     return _to_response(resume)
 
 
@@ -105,13 +152,8 @@ async def upload_resume(
         ) from exc
 
     rtype = ResumeType.coerce(resume_type)
-
-    # Persist file to writable tmp (ephemeral on serverless; text lives in DB)
-    upload_dir = Path(tempfile.gettempdir()) / "careerpilot_uploads"
-    upload_dir.mkdir(parents=True, exist_ok=True)
     safe_name = Path(filename).name
-    dest = upload_dir / f"{date.today().isoformat()}_{safe_name}"
-    dest.write_bytes(raw)
+    ensure_resume_schema()
 
     repo = ResumeRepository(db)
     try:
@@ -121,7 +163,6 @@ async def upload_resume(
                 resume_type=ResumeType(rtype),
                 target_role=target_role,
                 original_filename=safe_name,
-                file_path=str(dest),
                 extracted_text=text[:50000],
                 last_updated=date.today(),
                 notes=f"Uploaded file: {safe_name}",
@@ -131,8 +172,20 @@ async def upload_resume(
         logger.exception("Resume upload DB error")
         raise HTTPException(
             status_code=500,
-            detail="Could not save resume to database. Try again or use Add manually.",
+            detail="Could not save resume to database. Try Paste text or Add manually.",
         ) from exc
+
+    # Optional temp copy (text is durable in DB)
+    try:
+        upload_dir = Path(tempfile.gettempdir()) / "careerpilot_uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        dest = upload_dir / f"{date.today().isoformat()}_{safe_name}"
+        dest.write_bytes(raw)
+        repo.update(resume.id, ResumeUpdate(file_path=str(dest)))
+        resume = repo.get_by_id(resume.id) or resume
+    except Exception:
+        logger.warning("Temp file save skipped for resume %s", resume.id)
+
     return _to_response(resume)
 
 

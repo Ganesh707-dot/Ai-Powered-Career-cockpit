@@ -92,9 +92,18 @@ def _ensure_postgres_columns() -> None:
                     "text",
                 ):
                     conn.execute(
+                        text("ALTER TABLE resumes ALTER COLUMN resume_type DROP DEFAULT")
+                    )
+                    conn.execute(
                         text(
                             "ALTER TABLE resumes ALTER COLUMN resume_type TYPE VARCHAR(64) "
                             "USING resume_type::text"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "ALTER TABLE resumes ALTER COLUMN resume_type "
+                            "SET DEFAULT 'Full Stack Resume'"
                         )
                     )
                     log.info("Migrated resumes.resume_type to VARCHAR(64)")
@@ -107,6 +116,11 @@ def _ensure_postgres_columns() -> None:
                 )
     except Exception as exc:
         log.warning("Postgres resume migration skipped: %s", exc)
+
+
+def ensure_resume_schema() -> None:
+    """Run lightweight schema fixes before resume writes (serverless-safe)."""
+    init_db()
 
 
 def init_db():

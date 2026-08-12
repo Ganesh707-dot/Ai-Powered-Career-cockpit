@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const backendUrl =
   process.env.BACKEND_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "http://localhost:8000";
+  (process.env.VERCEL ? "https://careerpilot-api.vercel.app" : "http://localhost:8000");
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

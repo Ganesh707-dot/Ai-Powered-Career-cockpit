@@ -79,15 +79,20 @@ export default function MentorPage() {
     }
   };
 
-  const send = async (e?: FormEvent) => {
+  const send = async (
+    e?: FormEvent,
+    overrideText?: string,
+    freshSession = false
+  ) => {
     e?.preventDefault();
-    const text = input.trim();
+    const text = (overrideText ?? input).trim();
     if (!text || streaming) return;
 
     const { signal, isCurrent } = latest.begin();
-    const nextMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
+    const base = freshSession ? [] : messages;
+    const nextMessages: ChatMessage[] = [...base, { role: "user", content: text }];
     setMessages(nextMessages);
-    setInput("");
+    if (!overrideText) setInput("");
     setStreaming(true);
     setError(null);
 
@@ -133,11 +138,11 @@ export default function MentorPage() {
     }
   };
 
-  const startSession = () => {
-    setMessages([]);
-    setInput(
-      `I'm currently at ${currentLevel}, aiming for ${targetRole}. Assess me and give a directed learning + interview plan.`
-    );
+  const startSession = async () => {
+    const prompt = `I'm currently at ${currentLevel}, aiming for ${targetRole}. Assess me and give a directed learning + interview plan.`;
+    setError(null);
+    setInput("");
+    await send(undefined, prompt, true);
   };
 
   return (
@@ -312,9 +317,15 @@ export default function MentorPage() {
                 className="text-sm resize-none rounded-xl"
               />
             </div>
-            <Button variant="outline" className="w-full rounded-xl h-11" onClick={startSession}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full rounded-xl h-11"
+              disabled={streaming}
+              onClick={() => void startSession()}
+            >
               <Sparkles className="h-4 w-4" />
-              Prefill assessment prompt
+              {streaming ? "Assessing…" : "Run level assessment"}
             </Button>
           </CardContent>
         </Card>

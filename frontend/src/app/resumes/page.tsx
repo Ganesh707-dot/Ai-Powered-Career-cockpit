@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileText, Pencil, Plus, Trash2, Upload, Sparkles } from "lucide-react";
+import { ClipboardPaste, FileText, Pencil, Plus, Trash2, Upload, Sparkles } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useProfileStore } from "@/stores/profile-store";
@@ -39,15 +39,27 @@ const RESUME_TYPES: ResumeType[] = [
   "Custom",
 ];
 
+function syncProfileFromResume(
+  profile: ReturnType<typeof useProfileStore.getState>,
+  resume: Resume,
+  excerpt: string
+) {
+  profile.setResume(resume.id, resume.name, excerpt);
+}
+
 export default function ResumesPage() {
   const profile = useProfileStore();
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [pasting, setPasting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
   const [editing, setEditing] = useState<Resume | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [coachResult, setCoachResult] = useState<string | null>(null);
+  const [uploadType, setUploadType] = useState<ResumeType>("Full Stack Resume");
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     name: "",
@@ -57,6 +69,12 @@ export default function ResumesPage() {
     notes: "",
     last_updated: "",
   });
+  const [pasteForm, setPasteForm] = useState({
+    name: "",
+    resume_type: "Full Stack Resume" as ResumeType,
+    target_role: "",
+    text: "",
+  });
 
   const fetchResumes = async () => {
     setLoading(true);
@@ -64,7 +82,7 @@ export default function ResumesPage() {
       const data = await api.get<ResumeListResponse>("/resumes");
       setResumes(data.items);
     } catch (err) {
-      console.error(err);
+      setError(err instanceof ApiError ? err.message : "Could not load resumes");
     } finally {
       setLoading(false);
     }
@@ -87,6 +105,16 @@ export default function ResumesPage() {
     setDialogOpen(true);
   };
 
+  const openPaste = () => {
+    setPasteForm({
+      name: "",
+      resume_type: uploadType,
+      target_role: "",
+      text: "",
+    });
+    setPasteOpen(true);
+  };
+
   const openEdit = (resume: Resume) => {
     setEditing(resume);
     setForm({
@@ -102,6 +130,8 @@ export default function ResumesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setSuccess(null);
     const payload = {
       ...form,
       last_updated: form.last_updated || null,
@@ -109,34 +139,78 @@ export default function ResumesPage() {
     try {
       if (editing) {
         await api.patch(`/resumes/${editing.id}`, payload);
+        setSuccess("Resume updated.");
       } else {
         await api.post("/resumes", payload);
+        setSuccess("Resume added.");
       }
       setDialogOpen(false);
-      fetchResumes();
+      await fetchResumes();
     } catch (err) {
-      console.error(err);
+      setError(err instanceof ApiError ? err.message : "Save failed");
+    }
+  };
+
+  const handlePaste = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pasteForm.text.trim().length < 20) {
+      setError("Paste at least 20 characters of resume or personal statement text.");
+      return;
+    }
+    setPasting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const fd = new FormData();
+      fd.append("name", pasteForm.name.trim() || "My resume");
+      fd.append("text", pasteForm.text.trim());
+      fd.append("resume_type", pasteForm.resume_type);
+      if (pasteForm.target_role.trim()) {
+        fd.append("target_role", pasteForm.target_role.trim());
+      }
+      const saved = await api.upload<Resume>("/resumes/paste", fd);
+      syncProfileFromResume(profile, saved, pasteForm.text.trim().slice(0, 5000));
+      setPasteOpen(false);
+      setSuccess(`Saved “${saved.name}” — text ready for AI coaching.`);
+      await fetchResumes();
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Paste save failed"
+      );
+    } finally {
+      setPasting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this resume version?")) return;
-    await api.delete(`/resumes/${id}`);
-    if (profile.resumeId === id) {
-      profile.setResume(null, "", "");
+    setError(null);
+    try {
+      await api.delete(`/resumes/${id}`);
+      if (profile.resumeId === id) {
+        profile.setResume(null, "", "");
+      }
+      await fetchResumes();
+      setSuccess("Resume deleted.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Delete failed");
     }
-    fetchResumes();
   };
 
   const handleUpload = async (file: File | null) => {
     if (!file) return;
     setUploading(true);
     setError(null);
+    setSuccess(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("name", file.name.replace(/\.[^.]+$/, ""));
-      fd.append("resume_type", "Full Stack Resume");
+      fd.append("resume_type", uploadType);
       const uploaded = await api.upload<Resume>("/resumes/upload", fd);
       let excerpt = "";
       try {
@@ -145,7 +219,8 @@ export default function ResumesPage() {
       } catch {
         /* text stored in DB on upload */
       }
-      profile.setResume(uploaded.id, uploaded.name, excerpt);
+      syncProfileFromResume(profile, uploaded, excerpt);
+      setSuccess(`Uploaded “${uploaded.name}” successfully.`);
       await fetchResumes();
     } catch (err) {
       const msg =
@@ -162,6 +237,7 @@ export default function ResumesPage() {
 
   const coachFromResume = async (resume: Resume) => {
     setError(null);
+    setSuccess(null);
     setCoachResult(null);
     try {
       const textRes = await api.get<{ extracted_text: string }>(`/resumes/${resume.id}/text`);
@@ -196,36 +272,56 @@ export default function ResumesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-6">
-      <div className="flex flex-wrap justify-end gap-2">
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".pdf,.txt,.md,.docx"
-          className="hidden"
-          onChange={(e) => {
-            handleUpload(e.target.files?.[0] || null);
-            e.target.value = "";
-          }}
-        />
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={uploading}
-          onClick={() => fileRef.current?.click()}
-          type="button"
-        >
-          <Upload className="h-4 w-4" />
-          {uploading ? "Uploading…" : "Upload (max 4MB)"}
-        </Button>
-        {error && (
-          <p className="w-full text-sm text-destructive rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
-            {error}
-          </p>
-        )}
-        <Button onClick={openCreate} size="sm">
-          <Plus className="h-4 w-4" />
-          Add manually
-        </Button>
+      <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Upload a PDF/DOCX, paste resume or personal statement text, or add metadata manually.
+          Extracted text powers JD match, HR studio, and AI mentor.
+        </p>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1 min-w-[180px]">
+            <Label className="text-xs">Resume type</Label>
+            <Select value={uploadType} onValueChange={(v) => setUploadType(v as ResumeType)}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RESUME_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.txt,.md,.docx"
+            className="hidden"
+            onChange={(e) => {
+              handleUpload(e.target.files?.[0] || null);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={uploading || pasting}
+            onClick={() => fileRef.current?.click()}
+            type="button"
+          >
+            <Upload className="h-4 w-4" />
+            {uploading ? "Uploading…" : "Upload file"}
+          </Button>
+          <Button size="sm" variant="secondary" disabled={uploading || pasting} onClick={openPaste}>
+            <ClipboardPaste className="h-4 w-4" />
+            Paste text / statement
+          </Button>
+          <Button onClick={openCreate} size="sm" variant="outline" disabled={uploading || pasting}>
+            <Plus className="h-4 w-4" />
+            Add manually
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -234,11 +330,17 @@ export default function ResumesPage() {
         </div>
       )}
 
+      {success && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
+          {success}
+        </div>
+      )}
+
       {coachResult && (
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium mb-2 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> Gemini resume coach
+              <Sparkles className="h-4 w-4 text-primary" /> AI resume coach
             </p>
             <pre className="whitespace-pre-wrap text-xs text-muted-foreground">{coachResult}</pre>
           </CardContent>
@@ -251,9 +353,9 @@ export default function ResumesPage() {
         <EmptyState
           icon={FileText}
           title="No resume versions"
-          description="Upload a PDF/DOCX/TXT resume or add metadata manually."
-          actionLabel="Add Resume"
-          onAction={openCreate}
+          description="Upload a file or paste your resume / personal statement to get started."
+          actionLabel="Paste text"
+          onAction={openPaste}
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -282,9 +384,7 @@ export default function ResumesPage() {
                   </div>
                 </div>
                 {resume.target_role && (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    Target: {resume.target_role}
-                  </p>
+                  <p className="mt-3 text-sm text-muted-foreground">Target: {resume.target_role}</p>
                 )}
                 {resume.extracted_text_preview && (
                   <p className="mt-2 text-xs text-muted-foreground line-clamp-3">
@@ -308,72 +408,137 @@ export default function ResumesPage() {
         </div>
       )}
 
+      <Dialog open={pasteOpen} onOpenChange={setPasteOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Paste resume or personal statement</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handlePaste} className="flex flex-1 flex-col min-h-0 overflow-hidden">
+            <DialogBody className="space-y-4">
+              <div className="space-y-2">
+                <Label>Name *</Label>
+                <Input
+                  value={pasteForm.name}
+                  onChange={(e) => setPasteForm({ ...pasteForm, name: e.target.value })}
+                  placeholder="e.g. Full Stack Resume v2"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select
+                  value={pasteForm.resume_type}
+                  onValueChange={(v) =>
+                    setPasteForm({ ...pasteForm, resume_type: v as ResumeType })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RESUME_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Target role (optional)</Label>
+                <Input
+                  value={pasteForm.target_role}
+                  onChange={(e) => setPasteForm({ ...pasteForm, target_role: e.target.value })}
+                  placeholder="Senior Full Stack Developer"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Resume / statement text *</Label>
+                <Textarea
+                  rows={10}
+                  value={pasteForm.text}
+                  onChange={(e) => setPasteForm({ ...pasteForm, text: e.target.value })}
+                  placeholder="Paste your resume bullets, summary, or personal statement here…"
+                  required
+                  className="font-mono text-xs"
+                />
+              </div>
+            </DialogBody>
+            <DialogFooter className="modal-footer-stacked">
+              <Button type="button" variant="outline" onClick={() => setPasteOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pasting}>
+                {pasting ? "Saving…" : "Save text"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Resume" : "Add Resume"}</DialogTitle>
           </DialogHeader>
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-1 flex-col min-h-0 overflow-hidden"
-          >
+          <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0 overflow-hidden">
             <DialogBody className="space-y-4">
-            <div className="space-y-2">
-              <Label>Name *</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select
-                value={form.resume_type}
-                onValueChange={(v) =>
-                  setForm({ ...form, resume_type: v as ResumeType })
-                }
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {RESUME_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Target Role</Label>
-              <Input
-                value={form.target_role}
-                onChange={(e) => setForm({ ...form, target_role: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Skills Highlighted</Label>
-              <Input
-                value={form.skills_highlighted}
-                onChange={(e) =>
-                  setForm({ ...form, skills_highlighted: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Last Updated</Label>
-              <Input
-                type="date"
-                value={form.last_updated}
-                onChange={(e) => setForm({ ...form, last_updated: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                rows={3}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label>Name *</Label>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select
+                  value={form.resume_type}
+                  onValueChange={(v) => setForm({ ...form, resume_type: v as ResumeType })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RESUME_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Target Role</Label>
+                <Input
+                  value={form.target_role}
+                  onChange={(e) => setForm({ ...form, target_role: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Skills Highlighted</Label>
+                <Input
+                  value={form.skills_highlighted}
+                  onChange={(e) => setForm({ ...form, skills_highlighted: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Updated</Label>
+                <Input
+                  type="date"
+                  value={form.last_updated}
+                  onChange={(e) => setForm({ ...form, last_updated: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  rows={3}
+                />
+              </div>
             </DialogBody>
             <DialogFooter className="modal-footer-stacked">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>

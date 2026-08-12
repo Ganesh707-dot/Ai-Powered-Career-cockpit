@@ -131,21 +131,21 @@ def seed():
     resumes = [
         Resume(
             name="React Specialist",
-            resume_type=ResumeType.REACT,
+            resume_type=ResumeType.REACT.value,
             target_role="Senior React Developer",
             skills_highlighted="React, Redux, TypeScript, Jest, Storybook",
             last_updated=today - timedelta(days=7),
         ),
         Resume(
             name="Full Stack General",
-            resume_type=ResumeType.FULLSTACK,
+            resume_type=ResumeType.FULLSTACK.value,
             target_role="Senior Full Stack Developer",
             skills_highlighted="React, Next.js, Node.js, Python, PostgreSQL, AWS",
             last_updated=today - timedelta(days=3),
         ),
         Resume(
             name="AI Applications",
-            resume_type=ResumeType.AI,
+            resume_type=ResumeType.AI.value,
             target_role="AI Application Developer",
             skills_highlighted="Python, FastAPI, LangChain, React, Vector DBs",
             last_updated=today - timedelta(days=14),
