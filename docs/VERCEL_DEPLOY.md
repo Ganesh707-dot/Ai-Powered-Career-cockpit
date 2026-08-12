@@ -6,7 +6,7 @@
 |---------|----------------|
 | Frontend | https://careerpilot-ai-omega-khaki.vercel.app |
 | Backend API | https://careerpilot-api.vercel.app |
-| AI Wellness | https://maha-ai-wellness.vercel.app |
+| AI Wellness | https://veridian-clinical.vercel.app |
 
 **Vercel team:** `ganesh-v`
 
@@ -80,7 +80,7 @@ npx vercel deploy --prod --yes
 
 ---
 
-## AI Wellness — `maha-ai-wellness`
+## AI Wellness — `veridian-clinical`
 
 ### Environment variables (Production)
 
@@ -98,8 +98,8 @@ npx vercel env add GROQ_API_KEY production --value "YOUR_GROQ_KEY" --sensitive -
 npx vercel deploy --prod --yes
 
 # AI Wellness
-npx vercel env add GROQ_API_KEY production --project maha-ai-wellness --value "YOUR_GROQ_KEY" --sensitive --yes --force
-npx vercel deploy --prod --yes --project maha-ai-wellness
+npx vercel env add GROQ_API_KEY production --project veridian-clinical --value "YOUR_GROQ_KEY" --sensitive --yes --force
+npx vercel deploy --prod --yes --project veridian-clinical
 ```
 
 Never commit API keys to git. Store only in Vercel env vars.
