@@ -1,44 +1,89 @@
-# Vercel deploy (CareerPilot frontend)
+# Vercel deploy — CareerPilot (frontend + backend)
 
-The live site will stay on the **old UI** (Executive Dashboard, “Set up profile” popup) until Vercel successfully builds from `main`.
+## Live URLs
 
-## One-time project settings
+| Service | URL |
+|---------|-----|
+| Frontend | https://careerpilot-ai-omega-khaki.vercel.app |
+| Backend API | https://careerpilot-api.vercel.app |
 
-In [Vercel Dashboard](https://vercel.com) → your project → **Settings → General**:
+---
+
+## Frontend project (`careerpilot-ai`)
+
+**Settings → General**
 
 | Setting | Value |
 |---------|--------|
-| **Root Directory** | `frontend` |
-| **Framework Preset** | Next.js |
-| **Node.js Version** | 20.x |
+| Root Directory | `frontend` |
+| Framework | Next.js |
+| Node.js | 20.x |
 
-## Redeploy latest code
+**Settings → Environment Variables**
 
-1. **Deployments** tab → **Redeploy** on the latest commit (`49292cc` or newer).
-2. If build fails, open the log — fix errors, push again.
-3. After success, hard-refresh the site (or clear cache on mobile).
+| Variable | Value |
+|----------|--------|
+| `NEXT_PUBLIC_BACKEND_URL` | `https://careerpilot-api.vercel.app` |
 
-## Verify new build is live
+Frontend auto-deploys on push to `main`.
 
-New builds show:
+---
 
-- Page title: **Career Cockpit** (not “Executive Dashboard”)
-- Mobile: bottom tab bar, Job Mentor chat — **no profile popup on load**
-- Profile: optional **/profile** page only (gear icon)
+## Backend project (`careerpilot-api`)
 
-## Repo layout
+**Settings → General**
 
+| Setting | Value |
+|---------|--------|
+| Root Directory | `backend` |
+| Framework | Other |
+
+**Settings → Environment Variables** (required for production)
+
+Copy `GROQ_API_KEY` from your **AI Wellness** Vercel project (same Groq account).
+
+| Variable | Value |
+|----------|--------|
+| `DATABASE_URL` | Neon Postgres connection string (see `docs/NEON_DATABASE.md`) |
+| `AI_PROVIDER` | `groq` |
+| `GROQ_API_KEY` | From AI Wellness Vercel project |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` |
+| `CORS_ORIGINS` | `https://careerpilot-ai-omega-khaki.vercel.app` |
+
+After adding env vars → **Deployments → Redeploy** (backend must redeploy, not just frontend).
+
+### Verify backend is live
+
+```bash
+curl https://careerpilot-api.vercel.app/health
 ```
-/                 ← monorepo root (backend + frontend)
-/frontend         ← Vercel Root Directory must point here
-/frontend/vercel.json
-/vercel.json      ← fallback if Root Directory is repo root
+
+Expected when fully configured:
+
+```json
+{
+  "status": "healthy",
+  "ai_provider": "groq",
+  "database": "postgres",
+  "database_durable": true
+}
 ```
 
-## Backend API
+Workspace API (resumes, profile, job chat):
 
-Set in Vercel → **Environment Variables**:
+```bash
+curl -H "X-Workspace-Id: test" https://careerpilot-api.vercel.app/api/v1/workspace/profile
+```
 
-- `NEXT_PUBLIC_BACKEND_URL` = your Render/FastAPI URL (e.g. `https://careerpilot-api.onrender.com`)
+Should return JSON profile — **not** 404.
 
-Without this, the UI loads but API calls may fail locally in dev only; production rewrites use `BACKEND_URL` / `NEXT_PUBLIC_BACKEND_URL`.
+---
+
+## UI checklist (new build)
+
+- Page title: **Career Cockpit**
+- High-contrast dark theme (readable text)
+- Mobile: bottom tab bar, Job Mentor chat — no profile popup on load
+- Profile: `/profile` only (gear icon)
+
+Hard-refresh after deploy (Ctrl+Shift+R / clear mobile cache).

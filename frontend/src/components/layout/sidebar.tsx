@@ -41,7 +41,7 @@ export function Sidebar() {
         <nav className="space-y-6">
           {navGroups.map((group) => (
             <div key={group.label}>
-              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-foreground/65">
                 {group.label}
               </p>
               <div className="space-y-0.5">

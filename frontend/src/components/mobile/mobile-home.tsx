@@ -75,7 +75,7 @@ export function MobileHome({
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">
               {greeting}
             </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground leading-snug">
+            <p className="mt-1.5 text-sm text-foreground/80 leading-snug">
               Chat to search roles — resume, salary & intent from conversation.
             </p>
           </div>
@@ -108,7 +108,7 @@ export function MobileHome({
 
       {/* Quick tools grid */}
       <section className="px-4">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/70">
           Quick tools
         </h2>
         <div className="grid grid-cols-2 gap-2.5">
@@ -216,7 +216,7 @@ export function MobileHome({
 
       {dashboard?.recent_activity && dashboard.recent_activity.length > 0 && (
         <section className="px-4 pb-2">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/70">
             Recent activity
           </h2>
           <div className="space-y-2">

@@ -54,7 +54,7 @@ function MobileMenuGrid({
 
         {navGroups.map((group) => (
           <section key={group.label}>
-            <h3 className="mb-2.5 px-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            <h3 className="mb-2.5 px-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/65">
               {group.label}
             </h3>
             <div className="grid grid-cols-2 gap-2.5">

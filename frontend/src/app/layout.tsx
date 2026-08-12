@@ -4,7 +4,11 @@ import "./globals.css";
 import { AppLayout } from "@/components/layout/app-layout";
 import { StoreHydrationGate } from "@/components/providers/store-hydration-gate";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "CareerPilot AI — Personal Career Cockpit",
@@ -25,7 +29,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${inter.className} font-sans`}>
         <StoreHydrationGate>
           <AppLayout>{children}</AppLayout>
         </StoreHydrationGate>

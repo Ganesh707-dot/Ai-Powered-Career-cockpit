@@ -44,7 +44,7 @@ export function PageHeader({
             )}
           </div>
           {description && (
-            <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+            <p className="text-sm text-foreground/75 max-w-2xl leading-relaxed">
               {description}
             </p>
           )}
