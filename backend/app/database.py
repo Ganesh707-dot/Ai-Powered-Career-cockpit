@@ -63,8 +63,10 @@ def init_db():
     from app.models import (  # noqa: F401
         application,
         interview_journal,
+        job_context,
         learning_topic,
         resume,
+        workspace_profile,
     )
 
     Base.metadata.create_all(bind=engine)

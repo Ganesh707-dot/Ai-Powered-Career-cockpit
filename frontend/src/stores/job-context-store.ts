@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { api } from "@/lib/api";
 
 export interface MentorMessage {
   role: "user" | "assistant";
@@ -9,25 +9,6 @@ export interface MentorMessage {
   at: string;
 }
 
-export interface InterviewScenario {
-  id: string;
-  skill: string;
-  prompt: string;
-  userAnswer?: string;
-  feedback?: string;
-  difficulty: "easy" | "medium" | "hard";
-}
-
-export interface LiveCodeChallenge {
-  id: string;
-  title: string;
-  skill: string;
-  problem: string;
-  hints: string[];
-  completed: boolean;
-}
-
-/** Per-job execution context — separate memory for each application. */
 export interface JobExecutionContext {
   key: string;
   applicationId?: number;
@@ -38,8 +19,8 @@ export interface JobExecutionContext {
   weaknesses: string[];
   skillsFocus: string[];
   mentorThread: MentorMessage[];
-  scenarios: InterviewScenario[];
-  liveCode: LiveCodeChallenge[];
+  scenarios: Record<string, unknown>[];
+  liveCode: Record<string, unknown>[];
   lastUpdated: string;
 }
 
@@ -48,117 +29,129 @@ interface JobContextState {
   globalIntent: string;
   globalStrengths: string[];
   globalWeaknesses: string[];
+  hydrated: boolean;
+  bootstrap: () => Promise<void>;
   setGlobalInsights: (patch: {
     intent?: string;
     strengths?: string[];
     weaknesses?: string[];
   }) => void;
   getContext: (key: string) => JobExecutionContext | undefined;
-  upsertContext: (ctx: Partial<JobExecutionContext> & { key: string; company: string; role: string }) => void;
+  upsertContext: (
+    ctx: Partial<JobExecutionContext> & { key: string; company: string; role: string }
+  ) => void;
   appendMentorMessage: (key: string, message: Omit<MentorMessage, "at">) => void;
-  addScenario: (key: string, scenario: Omit<InterviewScenario, "id">) => void;
-  addLiveCode: (key: string, challenge: Omit<LiveCodeChallenge, "id">) => void;
   jobKey: (company: string, role: string, applicationId?: number) => string;
 }
 
-function defaultContext(key: string, company: string, role: string): JobExecutionContext {
+function mapFromApi(item: Record<string, unknown>): JobExecutionContext {
   return {
-    key,
-    company,
-    role,
-    intent: "",
-    strengths: [],
-    weaknesses: [],
-    skillsFocus: [],
-    mentorThread: [],
-    scenarios: [],
-    liveCode: [],
-    lastUpdated: new Date().toISOString(),
+    key: String(item.context_key),
+    applicationId: item.application_id != null ? Number(item.application_id) : undefined,
+    company: String(item.company ?? ""),
+    role: String(item.role ?? ""),
+    intent: String(item.intent ?? ""),
+    strengths: (item.strengths as string[]) ?? [],
+    weaknesses: (item.weaknesses as string[]) ?? [],
+    skillsFocus: (item.skills_focus as string[]) ?? [],
+    mentorThread: (item.mentor_thread as MentorMessage[]) ?? [],
+    scenarios: (item.scenarios as Record<string, unknown>[]) ?? [],
+    liveCode: (item.live_code as Record<string, unknown>[]) ?? [],
+    lastUpdated: String(item.updated_at ?? new Date().toISOString()),
   };
 }
 
-export const useJobContextStore = create<JobContextState>()(
-  persist(
-    (set, get) => ({
-      contexts: {},
-      globalIntent: "",
-      globalStrengths: [],
-      globalWeaknesses: [],
-      jobKey: (company, role, applicationId) =>
-        applicationId ? `app-${applicationId}` : `${company}::${role}`.toLowerCase(),
-      getContext: (key) => get().contexts[key],
-      setGlobalInsights: (patch) =>
-        set((s) => ({
-          globalIntent: patch.intent ?? s.globalIntent,
-          globalStrengths: patch.strengths ?? s.globalStrengths,
-          globalWeaknesses: patch.weaknesses ?? s.globalWeaknesses,
-        })),
-      upsertContext: (partial) =>
-        set((s) => {
-          const existing = s.contexts[partial.key] || defaultContext(partial.key, partial.company, partial.role);
-          const merged: JobExecutionContext = {
-            ...existing,
-            ...partial,
-            strengths: partial.strengths ?? existing.strengths,
-            weaknesses: partial.weaknesses ?? existing.weaknesses,
-            skillsFocus: partial.skillsFocus ?? existing.skillsFocus,
-            lastUpdated: new Date().toISOString(),
-          };
-          return { contexts: { ...s.contexts, [partial.key]: merged } };
-        }),
-      appendMentorMessage: (key, message) =>
-        set((s) => {
-          let ctx = s.contexts[key];
-          if (!ctx) {
-            ctx = defaultContext(key, "Career Map", "General");
-          }
-          return {
-            contexts: {
-              ...s.contexts,
-              [key]: {
-                ...ctx,
-                mentorThread: [
-                  ...ctx.mentorThread,
-                  { ...message, at: new Date().toISOString() },
-                ].slice(-40),
-                lastUpdated: new Date().toISOString(),
-              },
-            },
-          };
-        }),
-      addScenario: (key, scenario) =>
-        set((s) => {
-          const ctx = s.contexts[key];
-          if (!ctx) return s;
-          const entry: InterviewScenario = { ...scenario, id: `sc-${Date.now()}` };
-          return {
-            contexts: {
-              ...s.contexts,
-              [key]: {
-                ...ctx,
-                scenarios: [entry, ...ctx.scenarios].slice(0, 20),
-                lastUpdated: new Date().toISOString(),
-              },
-            },
-          };
-        }),
-      addLiveCode: (key, challenge) =>
-        set((s) => {
-          const ctx = s.contexts[key];
-          if (!ctx) return s;
-          const entry: LiveCodeChallenge = { ...challenge, id: `lc-${Date.now()}` };
-          return {
-            contexts: {
-              ...s.contexts,
-              [key]: {
-                ...ctx,
-                liveCode: [entry, ...ctx.liveCode].slice(0, 15),
-                lastUpdated: new Date().toISOString(),
-              },
-            },
-          };
-        }),
-    }),
-    { name: "careerpilot-job-contexts-v1", version: 1 }
-  )
-);
+function toApiPayload(ctx: JobExecutionContext) {
+  return {
+    context_key: ctx.key,
+    application_id: ctx.applicationId ?? null,
+    company: ctx.company,
+    role: ctx.role,
+    intent: ctx.intent,
+    strengths: ctx.strengths,
+    weaknesses: ctx.weaknesses,
+    skills_focus: ctx.skillsFocus,
+    mentor_thread: ctx.mentorThread,
+    scenarios: ctx.scenarios,
+    live_code: ctx.liveCode,
+  };
+}
+
+export const useJobContextStore = create<JobContextState>()((set, get) => ({
+  contexts: {},
+  globalIntent: "",
+  globalStrengths: [],
+  globalWeaknesses: [],
+  hydrated: false,
+  jobKey: (company, role, applicationId) =>
+    applicationId ? `app-${applicationId}` : `${company}::${role}`.toLowerCase(),
+  bootstrap: async () => {
+    try {
+      const res = await api.get<{ items: Record<string, unknown>[] }>("/workspace/job-contexts");
+      const contexts: Record<string, JobExecutionContext> = {};
+      for (const item of res.items) {
+        const ctx = mapFromApi(item);
+        contexts[ctx.key] = ctx;
+      }
+      set({ contexts, hydrated: true });
+    } catch {
+      set({ hydrated: true });
+    }
+  },
+  getContext: (key) => get().contexts[key],
+  setGlobalInsights: (patch) =>
+    set((s) => ({
+      globalIntent: patch.intent ?? s.globalIntent,
+      globalStrengths: patch.strengths ?? s.globalStrengths,
+      globalWeaknesses: patch.weaknesses ?? s.globalWeaknesses,
+    })),
+  upsertContext: (partial) => {
+    const existing = get().contexts[partial.key];
+    const merged: JobExecutionContext = {
+      key: partial.key,
+      company: partial.company,
+      role: partial.role,
+      applicationId: partial.applicationId ?? existing?.applicationId,
+      intent: partial.intent ?? existing?.intent ?? "",
+      strengths: partial.strengths ?? existing?.strengths ?? [],
+      weaknesses: partial.weaknesses ?? existing?.weaknesses ?? [],
+      skillsFocus: partial.skillsFocus ?? existing?.skillsFocus ?? [],
+      mentorThread: partial.mentorThread ?? existing?.mentorThread ?? [],
+      scenarios: partial.scenarios ?? existing?.scenarios ?? [],
+      liveCode: partial.liveCode ?? existing?.liveCode ?? [],
+      lastUpdated: new Date().toISOString(),
+    };
+    set((s) => ({ contexts: { ...s.contexts, [partial.key]: merged } }));
+    api.put(`/workspace/job-contexts/${encodeURIComponent(partial.key)}`, toApiPayload(merged)).catch(
+      () => undefined
+    );
+  },
+  appendMentorMessage: (key, message) => {
+    const existing = get().contexts[key];
+    const base: JobExecutionContext = existing ?? {
+      key,
+      company: "Career Map",
+      role: "General",
+      intent: "",
+      strengths: [],
+      weaknesses: [],
+      skillsFocus: [],
+      mentorThread: [],
+      scenarios: [],
+      liveCode: [],
+      lastUpdated: new Date().toISOString(),
+    };
+    const mentorThread = [
+      ...base.mentorThread,
+      { ...message, at: new Date().toISOString() },
+    ].slice(-40);
+    const merged = { ...base, mentorThread, lastUpdated: new Date().toISOString() };
+    set((s) => ({ contexts: { ...s.contexts, [key]: merged } }));
+    api
+      .post(`/workspace/job-contexts/${encodeURIComponent(key)}/messages`, {
+        role: message.role,
+        content: message.content,
+      })
+      .catch(() => undefined);
+  },
+}));

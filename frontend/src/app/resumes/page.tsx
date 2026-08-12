@@ -5,7 +5,6 @@ import { FileText, Pencil, Plus, Trash2, Upload, Sparkles } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useProfileStore } from "@/stores/profile-store";
-import { useResumeStore, storedToResume } from "@/stores/resume-store";
 import type { Resume, ResumeListResponse, ResumeType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +41,6 @@ const RESUME_TYPES: ResumeType[] = [
 
 export default function ResumesPage() {
   const profile = useProfileStore();
-  const resumeStore = useResumeStore();
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -64,12 +62,9 @@ export default function ResumesPage() {
     setLoading(true);
     try {
       const data = await api.get<ResumeListResponse>("/resumes");
-      const merged = resumeStore.mergeWithApi(data.items);
-      setResumes(merged.map(storedToResume));
+      setResumes(data.items);
     } catch (err) {
       console.error(err);
-      const cached = resumeStore.items;
-      if (cached.length) setResumes(cached.map(storedToResume));
     } finally {
       setLoading(false);
     }
@@ -126,12 +121,7 @@ export default function ResumesPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this resume version?")) return;
-    try {
-      await api.delete(`/resumes/${id}`);
-    } catch {
-      /* keep local copy if API DB was reset */
-    }
-    resumeStore.remove(id);
+    await api.delete(`/resumes/${id}`);
     if (profile.resumeId === id) {
       profile.setResume(null, "", "");
     }
@@ -151,14 +141,11 @@ export default function ResumesPage() {
       let excerpt = "";
       try {
         const textRes = await api.get<{ extracted_text: string }>(`/resumes/${uploaded.id}/text`);
-        excerpt = textRes.extracted_text.slice(0, 50000);
+        excerpt = textRes.extracted_text.slice(0, 5000);
       } catch {
-        if (file.type.startsWith("text/") || file.name.endsWith(".txt")) {
-          excerpt = (await file.text()).slice(0, 50000);
-        }
+        /* text stored in DB on upload */
       }
-      resumeStore.upsertFromApi(uploaded, excerpt);
-      profile.setResume(uploaded.id, uploaded.name, excerpt.slice(0, 5000));
+      profile.setResume(uploaded.id, uploaded.name, excerpt);
       await fetchResumes();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Upload failed");

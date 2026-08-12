@@ -1,5 +1,7 @@
 const PUBLIC_BACKEND_FALLBACK = "https://careerpilot-api.vercel.app";
 
+import { getWorkspaceId } from "@/lib/workspace-id";
+
 /** Resolve API base for browser + server. Prefer explicit public URL in production. */
 function resolveApiBase(): string {
   const explicit = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
@@ -37,6 +39,9 @@ async function request<T>(
   if (!isForm && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
+  if (typeof window !== "undefined") {
+    headers.set("X-Workspace-Id", getWorkspaceId());
+  }
 
   const res = await fetch(url, {
     ...options,
@@ -73,6 +78,12 @@ export const api = {
   patch: <T>(endpoint: string, data: JsonBody, init?: RequestInit) =>
     request<T>(endpoint, {
       method: "PATCH",
+      body: JSON.stringify(data),
+      ...init,
+    }),
+  put: <T>(endpoint: string, data: JsonBody, init?: RequestInit) =>
+    request<T>(endpoint, {
+      method: "PUT",
       body: JSON.stringify(data),
       ...init,
     }),

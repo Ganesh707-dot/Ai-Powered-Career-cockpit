@@ -2,8 +2,11 @@
 
 import os
 
-# Ensure SQLite path is writable on Vercel
-os.environ.setdefault("DATABASE_URL", "sqlite:////tmp/careerpilot.db")
+# Use Neon/Postgres when DATABASE_URL is set in Vercel env.
+# Fallback to /tmp SQLite only for local serverless demos without a database.
+if not os.environ.get("DATABASE_URL"):
+    os.environ.setdefault("DATABASE_URL", "sqlite:////tmp/careerpilot.db")
+
 os.environ.setdefault("SEED_ON_STARTUP", "true")
 
 from mangum import Mangum

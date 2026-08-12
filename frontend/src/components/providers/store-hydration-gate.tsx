@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useWorkspaceSync } from "@/hooks/use-workspace-sync";
+import { useJobContextStore } from "@/stores/job-context-store";
 
 /**
- * Avoid Zustand persist hydration mismatch — render children only after
- * localStorage state has rehydrated on the client.
+ * Wait for client mount, then hydrate profile + job context from Postgres API.
  */
 export function StoreHydrationGate({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useWorkspaceSync();
 
   useEffect(() => {
-    setReady(true);
+    setMounted(true);
+    useJobContextStore.getState().bootstrap();
   }, []);
 
-  if (!ready) {
+  if (!mounted) {
     return (
       <div className="min-h-[100dvh] app-mesh flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

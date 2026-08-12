@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import init_db
-from app.routers import applications, features, journal, learning, resumes
+from app.routers import applications, features, journal, learning, resumes, workspace
 from app.services.llm.errors import AIConfigurationError, AIProviderError
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
@@ -43,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(workspace.router, prefix="/api/v1")
 app.include_router(applications.router, prefix="/api/v1")
 app.include_router(journal.router, prefix="/api/v1")
 app.include_router(resumes.router, prefix="/api/v1")
@@ -69,6 +70,7 @@ def health_check():
         "app": settings.app_name,
         "version": settings.app_version,
         "environment": settings.environment,
-        "ai_provider": "gemini" if settings.gemini_enabled else "unconfigured",
+        "ai_provider": settings.ai_provider if settings.ai_enabled else "unconfigured",
         "database": "sqlite" if settings.is_sqlite else "postgres",
+        "database_durable": not settings.is_sqlite,
     }
