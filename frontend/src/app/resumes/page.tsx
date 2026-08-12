@@ -148,7 +148,13 @@ export default function ResumesPage() {
       profile.setResume(uploaded.id, uploaded.name, excerpt);
       await fetchResumes();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Upload failed");
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Upload failed";
+      setError(msg);
     } finally {
       setUploading(false);
     }

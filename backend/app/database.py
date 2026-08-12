@@ -1,5 +1,8 @@
+import os
+
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
@@ -8,6 +11,9 @@ engine_kwargs: dict = {"pool_pre_ping": True}
 
 if settings.is_sqlite:
     connect_args = {"check_same_thread": False}
+elif os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    # Serverless: one connection per invocation — avoid pool exhaustion on Neon
+    engine_kwargs["poolclass"] = NullPool
 else:
     engine_kwargs.update({"pool_size": 5, "max_overflow": 10})
 
@@ -59,6 +65,31 @@ def _ensure_sqlite_columns() -> None:
                 )
 
 
+def _ensure_postgres_columns() -> None:
+    """Additive migrations for Neon/Postgres when Alembic is not used."""
+    if settings.is_sqlite:
+        return
+    try:
+        with engine.begin() as conn:
+            rows = conn.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = 'resumes'"
+                )
+            ).fetchall()
+            cols = {row[0] for row in rows}
+            if not cols:
+                return
+            if "extracted_text" not in cols:
+                conn.execute(text("ALTER TABLE resumes ADD COLUMN extracted_text TEXT"))
+            if "original_filename" not in cols:
+                conn.execute(
+                    text("ALTER TABLE resumes ADD COLUMN original_filename VARCHAR(255)")
+                )
+    except Exception:
+        pass
+
+
 def init_db():
     from app.models import (  # noqa: F401
         application,
@@ -72,5 +103,6 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     try:
         _ensure_sqlite_columns()
+        _ensure_postgres_columns()
     except Exception:
         pass

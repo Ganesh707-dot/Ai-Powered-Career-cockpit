@@ -1,3 +1,4 @@
+import logging
 import tempfile
 from datetime import date
 from pathlib import Path
@@ -18,6 +19,7 @@ from app.schemas.resume import (
 from app.services.file_extract import FileExtractError, extract_text
 
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
+logger = logging.getLogger("careerpilot.resumes")
 
 
 def _to_response(resume) -> ResumeResponse:
@@ -95,6 +97,12 @@ async def upload_resume(
         text = extract_text(filename, raw)
     except FileExtractError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Text extraction failed for %s", filename)
+        raise HTTPException(
+            status_code=400,
+            detail="Could not read this file. Try a text-based PDF, .docx, or .txt.",
+        ) from exc
 
     try:
         rtype = ResumeType(resume_type)
@@ -109,18 +117,25 @@ async def upload_resume(
     dest.write_bytes(raw)
 
     repo = ResumeRepository(db)
-    resume = repo.create(
-        ResumeCreate(
-            name=name or Path(filename).stem,
-            resume_type=rtype,
-            target_role=target_role,
-            original_filename=safe_name,
-            file_path=str(dest),
-            extracted_text=text[:50000],
-            last_updated=date.today(),
-            notes=f"Uploaded file: {safe_name}",
+    try:
+        resume = repo.create(
+            ResumeCreate(
+                name=name or Path(filename).stem,
+                resume_type=rtype,
+                target_role=target_role,
+                original_filename=safe_name,
+                file_path=str(dest),
+                extracted_text=text[:50000],
+                last_updated=date.today(),
+                notes=f"Uploaded file: {safe_name}",
+            )
         )
-    )
+    except Exception as exc:
+        logger.exception("Resume upload DB error")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save resume to database. Try again or use Add manually.",
+        ) from exc
     return _to_response(resume)
 
 

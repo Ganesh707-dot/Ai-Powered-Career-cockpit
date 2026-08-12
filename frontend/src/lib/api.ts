@@ -2,11 +2,11 @@ const PUBLIC_BACKEND =
   process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "") ||
   "https://careerpilot-api.vercel.app";
 
-const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // Vercel proxy limit ~4.5MB
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 import { getWorkspaceId } from "@/lib/workspace-id";
 
-/** Browser uses same-origin proxy for JSON; uploads go direct to FastAPI. */
+/** Browser always uses same-origin /api/v1 (Next.js rewrite → FastAPI). Avoids CORS on uploads. */
 function resolveApiBase(): string {
   if (typeof window !== "undefined") {
     return "/api/v1";
@@ -25,13 +25,6 @@ function resolveApiBase(): string {
   return explicit || "/api/v1";
 }
 
-function resolveUploadBase(): string {
-  if (typeof window !== "undefined") {
-    return `${PUBLIC_BACKEND}/api/v1`;
-  }
-  return resolveApiBase();
-}
-
 const API_BASE = resolveApiBase();
 
 export class ApiError extends Error {
@@ -42,6 +35,22 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+}
+
+function parseErrorMessage(res: Response, body: unknown): string {
+  const error = body as { detail?: unknown; message?: string };
+  const detail = error.detail ?? error.message;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(", ");
+  }
+  if (res.status === 413) {
+    return "File too large (max 4MB). Try a smaller PDF or .docx.";
+  }
+  if (res.status >= 500) {
+    return "Server error — please try again in a few seconds.";
+  }
+  return "Request failed";
 }
 
 async function request<T>(
@@ -59,24 +68,23 @@ async function request<T>(
     headers.set("X-Workspace-Id", getWorkspaceId());
   }
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-    credentials: isForm && base !== API_BASE ? "omit" : "include",
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
+  } catch {
+    throw new ApiError(
+      0,
+      "Network error — check your connection or try again. If this persists, the API may be waking up."
+    );
+  }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
-    const detail = error.detail;
-    const message =
-      typeof detail === "string"
-        ? detail
-        : Array.isArray(detail)
-          ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(", ")
-          : res.status === 413
-            ? "File too large (max 4MB). Try a smaller PDF or .docx."
-            : "Request failed";
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, parseErrorMessage(res, error));
   }
 
   if (res.status === 204) return undefined as T;
@@ -108,27 +116,15 @@ export const api = {
     }),
   delete: (endpoint: string, init?: RequestInit) =>
     request<void>(endpoint, { method: "DELETE", ...init }),
-  /** Direct to FastAPI — bypasses Next.js 4.5MB body limit on multipart uploads */
+  /** Same-origin upload via Next.js rewrite (works for PDF/DOCX up to 4MB) */
   upload: <T>(endpoint: string, formData: FormData, init?: RequestInit) => {
-    if (typeof window !== "undefined") {
-      const file = formData.get("file");
-      if (file instanceof File && file.size > MAX_UPLOAD_BYTES) {
-        return Promise.reject(
-          new ApiError(400, "File too large (max 4MB). Export a lighter PDF or use .txt/.md.")
-        );
-      }
+    const file = formData.get("file");
+    if (file instanceof File && file.size > MAX_UPLOAD_BYTES) {
+      return Promise.reject(
+        new ApiError(400, "File too large (max 4MB). Export a lighter PDF or use .txt/.md.")
+      );
     }
-    const uploadInit: RequestInit = { method: "POST", body: formData, ...init };
-    if (typeof window !== "undefined") {
-      const headers = new Headers(uploadInit.headers || {});
-      headers.set("X-Workspace-Id", getWorkspaceId());
-      uploadInit.headers = headers;
-    }
-    return request<T>(
-      endpoint,
-      uploadInit,
-      typeof window !== "undefined" ? resolveUploadBase() : API_BASE
-    );
+    return request<T>(endpoint, { method: "POST", body: formData, ...init });
   },
   maxUploadBytes: MAX_UPLOAD_BYTES,
 };
@@ -148,7 +144,7 @@ export async function streamMentorChat(
   });
   if (!res.ok || !res.body) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, error.detail || "Stream failed");
+    throw new ApiError(res.status, parseErrorMessage(res, error));
   }
 
   const reader = res.body.getReader();

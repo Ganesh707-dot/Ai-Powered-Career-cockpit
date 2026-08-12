@@ -152,13 +152,17 @@ def job_mentor_chat(request: JobMentorChatRequest):
 @router.get("/ai-status")
 def ai_status():
     from app.config import settings
-    from app.services.ai_client import gemini_client
+    from app.services.llm.factory import create_llm
+
+    provider = create_llm()
+    model = getattr(provider, "model_name", settings.groq_model or settings.gemini_model)
 
     return {
-        "provider": getattr(gemini_client, "provider_name", settings.ai_provider),
-        "model": getattr(gemini_client, "model_name", settings.gemini_model),
+        "provider": settings.ai_provider,
+        "model": model,
         "configured": settings.ai_enabled,
-        "swap_hint": "Set AI_PROVIDER=openai + OPENAI_API_KEY to use GPT later",
+        "liveLlm": settings.ai_enabled,
+        "swap_hint": "Set AI_PROVIDER=groq + GROQ_API_KEY (or gemini/openai)",
         "features": [
             "jd-analysis",
             "interview-prep",
