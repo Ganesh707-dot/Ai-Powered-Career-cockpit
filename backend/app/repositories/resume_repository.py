@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.models.resume import Resume
+from app.models.resume import Resume, ResumeType
 from app.schemas.resume import ResumeCreate, ResumeUpdate
 
 
@@ -22,8 +22,14 @@ class ResumeRepository:
     def get_by_id(self, resume_id: int) -> Resume | None:
         return self.db.query(Resume).filter(Resume.id == resume_id).first()
 
+    def _normalize_payload(self, data: dict) -> dict:
+        payload = dict(data)
+        if "resume_type" in payload:
+            payload["resume_type"] = ResumeType.coerce(payload["resume_type"])
+        return payload
+
     def create(self, data: ResumeCreate) -> Resume:
-        resume = Resume(**data.model_dump())
+        resume = Resume(**self._normalize_payload(data.model_dump()))
         self.db.add(resume)
         self.db.commit()
         self.db.refresh(resume)
@@ -33,7 +39,7 @@ class ResumeRepository:
         resume = self.get_by_id(resume_id)
         if not resume:
             return None
-        update_data = data.model_dump(exclude_unset=True)
+        update_data = self._normalize_payload(data.model_dump(exclude_unset=True))
         for key, value in update_data.items():
             setattr(resume, key, value)
         self.db.commit()

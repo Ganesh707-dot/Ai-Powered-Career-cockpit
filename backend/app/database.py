@@ -69,25 +69,44 @@ def _ensure_postgres_columns() -> None:
     """Additive migrations for Neon/Postgres when Alembic is not used."""
     if settings.is_sqlite:
         return
+    import logging
+
+    log = logging.getLogger("careerpilot.db")
     try:
         with engine.begin() as conn:
             rows = conn.execute(
                 text(
-                    "SELECT column_name FROM information_schema.columns "
+                    "SELECT column_name, data_type, udt_name FROM information_schema.columns "
                     "WHERE table_schema = 'public' AND table_name = 'resumes'"
                 )
             ).fetchall()
-            cols = {row[0] for row in rows}
-            if not cols:
+            if not rows:
                 return
+            cols = {row[0]: (row[1], row[2]) for row in rows}
+
+            if "resume_type" in cols:
+                dtype, udt = cols["resume_type"]
+                if dtype == "USER-DEFINED" or udt not in (
+                    "varchar",
+                    "character varying",
+                    "text",
+                ):
+                    conn.execute(
+                        text(
+                            "ALTER TABLE resumes ALTER COLUMN resume_type TYPE VARCHAR(64) "
+                            "USING resume_type::text"
+                        )
+                    )
+                    log.info("Migrated resumes.resume_type to VARCHAR(64)")
+
             if "extracted_text" not in cols:
                 conn.execute(text("ALTER TABLE resumes ADD COLUMN extracted_text TEXT"))
             if "original_filename" not in cols:
                 conn.execute(
                     text("ALTER TABLE resumes ADD COLUMN original_filename VARCHAR(255)")
                 )
-    except Exception:
-        pass
+    except Exception as exc:
+        log.warning("Postgres resume migration skipped: %s", exc)
 
 
 def init_db():

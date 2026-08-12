@@ -104,10 +104,7 @@ async def upload_resume(
             detail="Could not read this file. Try a text-based PDF, .docx, or .txt.",
         ) from exc
 
-    try:
-        rtype = ResumeType(resume_type)
-    except ValueError:
-        rtype = ResumeType.FULLSTACK
+    rtype = ResumeType.coerce(resume_type)
 
     # Persist file to writable tmp (ephemeral on serverless; text lives in DB)
     upload_dir = Path(tempfile.gettempdir()) / "careerpilot_uploads"
@@ -121,7 +118,7 @@ async def upload_resume(
         resume = repo.create(
             ResumeCreate(
                 name=name or Path(filename).stem,
-                resume_type=rtype,
+                resume_type=ResumeType(rtype),
                 target_role=target_role,
                 original_filename=safe_name,
                 file_path=str(dest),
