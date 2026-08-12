@@ -87,8 +87,8 @@ async def upload_resume(
     db: Session = Depends(get_db),
 ):
     raw = await file.read()
-    if len(raw) > 8 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large (max 8MB)")
+    if len(raw) > 4 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 4MB)")
 
     filename = file.filename or "resume.txt"
     try:

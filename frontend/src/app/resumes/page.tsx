@@ -209,8 +209,13 @@ export default function ResumesPage() {
           type="button"
         >
           <Upload className="h-4 w-4" />
-          {uploading ? "Uploading…" : "Upload PDF/DOCX/TXT"}
+          {uploading ? "Uploading…" : "Upload (max 4MB)"}
         </Button>
+        {error && (
+          <p className="w-full text-sm text-destructive rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
+            {error}
+          </p>
+        )}
         <Button onClick={openCreate} size="sm">
           <Plus className="h-4 w-4" />
           Add manually

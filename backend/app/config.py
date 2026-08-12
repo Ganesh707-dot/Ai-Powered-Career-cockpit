@@ -31,7 +31,11 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = "sqlite:///./careerpilot.db"
     # Stored as string so Vercel/Render env vars don't need JSON encoding
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "https://careerpilot-ai-omega-khaki.vercel.app,"
+        "https://careerpilot-ai.vercel.app"
+    )
     # AI provider: "gemini" | "groq" | "openai"
     ai_provider: str = "gemini"
     gemini_api_key: str = ""

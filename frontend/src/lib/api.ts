@@ -1,8 +1,12 @@
-const PUBLIC_BACKEND_FALLBACK = "https://careerpilot-api.vercel.app";
+const PUBLIC_BACKEND =
+  process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "") ||
+  "https://careerpilot-api.vercel.app";
+
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // Vercel proxy limit ~4.5MB
 
 import { getWorkspaceId } from "@/lib/workspace-id";
 
-/** Browser uses same-origin proxy so site-lock cookie protects API rewrites too. */
+/** Browser uses same-origin proxy for JSON; uploads go direct to FastAPI. */
 function resolveApiBase(): string {
   if (typeof window !== "undefined") {
     return "/api/v1";
@@ -15,10 +19,17 @@ function resolveApiBase(): string {
   if (backend) return `${backend}/api/v1`;
 
   if (process.env.NODE_ENV === "production") {
-    return `${PUBLIC_BACKEND_FALLBACK}/api/v1`;
+    return `${PUBLIC_BACKEND}/api/v1`;
   }
 
   return explicit || "/api/v1";
+}
+
+function resolveUploadBase(): string {
+  if (typeof window !== "undefined") {
+    return `${PUBLIC_BACKEND}/api/v1`;
+  }
+  return resolveApiBase();
 }
 
 const API_BASE = resolveApiBase();
@@ -35,9 +46,10 @@ export class ApiError extends Error {
 
 async function request<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  base = API_BASE
 ): Promise<T> {
-  const url = `${API_BASE}${endpoint}`;
+  const url = `${base}${endpoint}`;
   const headers = new Headers(options.headers || {});
   const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
   if (!isForm && !headers.has("Content-Type")) {
@@ -50,7 +62,7 @@ async function request<T>(
   const res = await fetch(url, {
     ...options,
     headers,
-    credentials: "include",
+    credentials: isForm && base !== API_BASE ? "omit" : "include",
   });
 
   if (!res.ok) {
@@ -61,7 +73,9 @@ async function request<T>(
         ? detail
         : Array.isArray(detail)
           ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(", ")
-          : "Request failed";
+          : res.status === 413
+            ? "File too large (max 4MB). Try a smaller PDF or .docx."
+            : "Request failed";
     throw new ApiError(res.status, message);
   }
 
@@ -94,8 +108,29 @@ export const api = {
     }),
   delete: (endpoint: string, init?: RequestInit) =>
     request<void>(endpoint, { method: "DELETE", ...init }),
-  upload: <T>(endpoint: string, formData: FormData, init?: RequestInit) =>
-    request<T>(endpoint, { method: "POST", body: formData, ...init }),
+  /** Direct to FastAPI — bypasses Next.js 4.5MB body limit on multipart uploads */
+  upload: <T>(endpoint: string, formData: FormData, init?: RequestInit) => {
+    if (typeof window !== "undefined") {
+      const file = formData.get("file");
+      if (file instanceof File && file.size > MAX_UPLOAD_BYTES) {
+        return Promise.reject(
+          new ApiError(400, "File too large (max 4MB). Export a lighter PDF or use .txt/.md.")
+        );
+      }
+    }
+    const uploadInit: RequestInit = { method: "POST", body: formData, ...init };
+    if (typeof window !== "undefined") {
+      const headers = new Headers(uploadInit.headers || {});
+      headers.set("X-Workspace-Id", getWorkspaceId());
+      uploadInit.headers = headers;
+    }
+    return request<T>(
+      endpoint,
+      uploadInit,
+      typeof window !== "undefined" ? resolveUploadBase() : API_BASE
+    );
+  },
+  maxUploadBytes: MAX_UPLOAD_BYTES,
 };
 
 /** Stream mentor SSE tokens; calls onChunk for each text piece. */

@@ -107,7 +107,13 @@
   }
 
   .surface-elevated {
-    @apply rounded-2xl border border-border/90 bg-card shadow-lg shadow-black/25 backdrop-blur-xl;
+    @apply rounded-2xl border border-border/90 bg-card shadow-lg shadow-black/25;
+  }
+
+  @media (min-width: 768px) {
+    .surface-elevated {
+      @apply backdrop-blur-xl;
+    }
   }
 
   .surface-interactive {
@@ -313,9 +319,15 @@
   }
 
   .mobile-tab-bar {
-    @apply fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-background/95 backdrop-blur-2xl;
+    @apply fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-background/98;
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    box-shadow: 0 -8px 32px hsl(0 0% 0% / 0.35);
+    box-shadow: 0 -4px 16px hsl(0 0% 0% / 0.25);
+  }
+
+  @media (min-width: 768px) {
+    .mobile-tab-bar {
+      @apply backdrop-blur-md;
+    }
   }
 
   .mobile-tab-bar-inner {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -16,7 +17,7 @@ import { formatRelativeTime } from "@/lib/utils";
 import { useProfileStore } from "@/stores/profile-store";
 import { useJobContextStore } from "@/stores/job-context-store";
 import type { DashboardResponse, DiscoveredJob } from "@/types";
-import { JobMentorChat, MentorJobCard } from "@/components/cockpit/job-mentor-chat";
+import { MentorJobCard } from "@/components/cockpit/job-mentor-chat";
 import { MobileHome } from "@/components/mobile/mobile-home";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageShell } from "@/components/layout/page-shell";
@@ -27,6 +28,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+
+const JobMentorChat = dynamic(
+  () => import("@/components/cockpit/job-mentor-chat").then((m) => m.JobMentorChat),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="surface-elevated min-h-[320px] flex items-center justify-center">
+        <PageLoading />
+      </div>
+    ),
+  }
+);
 
 export default function CareerCockpitPage() {
   const profile = useProfileStore();

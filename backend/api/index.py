@@ -2,24 +2,44 @@
 
 import os
 
-# Use Neon/Postgres when DATABASE_URL is set in Vercel env.
-# Fallback to /tmp SQLite only for local serverless demos without a database.
 if not os.environ.get("DATABASE_URL"):
     os.environ.setdefault("DATABASE_URL", "sqlite:////tmp/careerpilot.db")
 
-os.environ.setdefault("SEED_ON_STARTUP", "true")
+# Skip heavy seed on every cold start unless explicitly enabled
+os.environ.setdefault("SEED_ON_STARTUP", "false")
 
 from mangum import Mangum
 
 from app.database import init_db
 from app.main import app
 
-init_db()
-try:
-    from seed import seed
+_db_ready = False
 
-    seed()
-except Exception:
-    pass
 
-handler = Mangum(app, lifespan="off")
+def _ensure_db():
+    global _db_ready
+    if _db_ready:
+        return
+    init_db()
+    if os.environ.get("SEED_ON_STARTUP", "false").lower() in ("1", "true", "yes"):
+        try:
+            from seed import seed
+
+            seed()
+        except Exception:
+            pass
+    _db_ready = True
+
+
+class LazyHandler:
+    def __init__(self):
+        self._handler = None
+
+    def __call__(self, event, context):
+        _ensure_db()
+        if self._handler is None:
+            self._handler = Mangum(app, lifespan="off")
+        return self._handler(event, context)
+
+
+handler = LazyHandler()
