@@ -2,57 +2,113 @@
 
 ## Live URLs
 
-| Service | URL |
-|---------|-----|
+| Service | Production URL |
+|---------|----------------|
 | Frontend | https://careerpilot-ai-omega-khaki.vercel.app |
 | Backend API | https://careerpilot-api.vercel.app |
+| AI Wellness | https://maha-ai-wellness.vercel.app |
+
+**Vercel team:** `ganesh-v`
 
 ---
 
-## Frontend project (`careerpilot-ai`)
+## Frontend — `careerpilot-ai`
 
-**Settings → General**
+### Project settings
 
 | Setting | Value |
 |---------|--------|
 | Root Directory | `frontend` |
 | Framework | Next.js |
-| Node.js | 20.x |
+| Node.js | 20.x+ |
 
-**Settings → Environment Variables**
+### Environment variables (Production)
 
 | Variable | Value |
 |----------|--------|
 | `NEXT_PUBLIC_BACKEND_URL` | `https://careerpilot-api.vercel.app` |
 
-Frontend auto-deploys on push to `main`.
+### Deploy
+
+```bash
+cd frontend
+npx vercel link --project careerpilot-ai
+npx vercel deploy --prod --yes
+```
+
+Auto-deploys on push to `main` when GitHub is connected.
 
 ---
 
-## Backend project (`careerpilot-api`)
+## Backend — `careerpilot-api`
 
-**Settings → General**
+### Project settings
 
 | Setting | Value |
 |---------|--------|
 | Root Directory | `backend` |
-| Framework | Other |
+| Framework | Other (Python serverless) |
 
-**Settings → Environment Variables** (required for production)
+### Environment variables (Production)
 
-Copy `GROQ_API_KEY` from your **AI Wellness** Vercel project (same Groq account).
+| Variable | Value | Notes |
+|----------|--------|--------|
+| `DATABASE_URL` | Neon Postgres connection string | Required for durable data. See `docs/NEON_DATABASE.md`. Without this, API falls back to ephemeral SQLite in `/tmp`. |
+| `AI_PROVIDER` | `groq` | Use Groq for AI features |
+| `GROQ_API_KEY` | Your Groq API key (`gsk_...`) | Same key as wellness project |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Fast Groq model |
+| `CORS_ORIGINS` | `https://careerpilot-ai-omega-khaki.vercel.app,https://careerpilot-ai-ganesh-v.vercel.app` | Comma-separated frontend URLs |
+| `ENVIRONMENT` | `production` | Optional |
+| `SEED_ON_STARTUP` | `true` | Optional demo seed data |
+
+Legacy (optional fallback):
 
 | Variable | Value |
 |----------|--------|
-| `DATABASE_URL` | Neon Postgres connection string (see `docs/NEON_DATABASE.md`) |
-| `AI_PROVIDER` | `groq` |
-| `GROQ_API_KEY` | From AI Wellness Vercel project |
+| `GEMINI_API_KEY` | Only if `AI_PROVIDER=gemini` |
+| `GEMINI_MODEL` | `gemini-2.0-flash-lite` |
+
+### Deploy
+
+```bash
+cd backend
+npx vercel link --project careerpilot-api
+npx vercel deploy --prod --yes
+```
+
+**Important:** After changing env vars, redeploy the backend (env changes are not applied to running deployments automatically in all cases).
+
+---
+
+## AI Wellness — `maha-ai-wellness`
+
+### Environment variables (Production)
+
+| Variable | Value |
+|----------|--------|
+| `GROQ_API_KEY` | Same Groq key as CareerPilot backend |
 | `GROQ_MODEL` | `llama-3.3-70b-versatile` |
-| `CORS_ORIGINS` | `https://careerpilot-ai-omega-khaki.vercel.app` |
 
-After adding env vars → **Deployments → Redeploy** (backend must redeploy, not just frontend).
+### Update Groq key (both projects)
 
-### Verify backend is live
+```bash
+# CareerPilot API
+cd backend
+npx vercel env add GROQ_API_KEY production --value "YOUR_GROQ_KEY" --sensitive --yes --force
+npx vercel deploy --prod --yes
+
+# AI Wellness
+npx vercel env add GROQ_API_KEY production --project maha-ai-wellness --value "YOUR_GROQ_KEY" --sensitive --yes --force
+npx vercel deploy --prod --yes --project maha-ai-wellness
+```
+
+Never commit API keys to git. Store only in Vercel env vars.
+
+---
+
+## Verify production
+
+### Backend health
 
 ```bash
 curl https://careerpilot-api.vercel.app/health
@@ -69,21 +125,33 @@ Expected when fully configured:
 }
 ```
 
-Workspace API (resumes, profile, job chat):
+If `database` is `sqlite`, set `DATABASE_URL` to Neon Postgres and redeploy.
+
+### Workspace API
 
 ```bash
 curl -H "X-Workspace-Id: test" https://careerpilot-api.vercel.app/api/v1/workspace/profile
 ```
 
-Should return JSON profile — **not** 404.
+Should return JSON profile — not 404.
+
+### Frontend
+
+Open https://careerpilot-ai-omega-khaki.vercel.app — hard refresh (Ctrl+Shift+R).
+
+- Title: **Career Cockpit**
+- Mobile: bottom tabs, Job Mentor chat
+- High-contrast dark UI
 
 ---
 
-## UI checklist (new build)
+## Architecture
 
-- Page title: **Career Cockpit**
-- High-contrast dark theme (readable text)
-- Mobile: bottom tab bar, Job Mentor chat — no profile popup on load
-- Profile: `/profile` only (gear icon)
-
-Hard-refresh after deploy (Ctrl+Shift+R / clear mobile cache).
+```
+Browser (Next.js)
+  │  X-Workspace-Id header
+  ▼
+careerpilot-api.vercel.app (FastAPI)
+  ├── Postgres (Neon) — resumes, profile, job contexts
+  └── Groq — AI mentor, JD analysis, coaching
+```
