@@ -27,7 +27,7 @@ def _to_response(resume) -> ResumeResponse:
     return ResumeResponse(
         id=resume.id,
         name=resume.name,
-        resume_type=ResumeType.coerce(resume.resume_type),
+        resume_type=ResumeType(ResumeType.coerce(resume.resume_type)),
         target_role=resume.target_role,
         skills_highlighted=resume.skills_highlighted,
         notes=resume.notes,

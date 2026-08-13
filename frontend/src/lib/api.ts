@@ -6,7 +6,7 @@ const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 import { getWorkspaceId } from "@/lib/workspace-id";
 
-/** Browser always uses same-origin /api/v1 (Next.js rewrite → FastAPI). Avoids CORS on uploads. */
+/** Browser JSON calls use same-origin /api/v1 rewrite; file uploads go direct to FastAPI. */
 function resolveApiBase(): string {
   if (typeof window !== "undefined") {
     return "/api/v1";
@@ -26,6 +26,18 @@ function resolveApiBase(): string {
 }
 
 const API_BASE = resolveApiBase();
+
+/** Multipart file uploads must hit FastAPI directly — Next.js rewrites corrupt FormData on Vercel. */
+function resolveUploadBase(): string {
+  const backend = PUBLIC_BACKEND.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    return `${backend}/api/v1`;
+  }
+  const explicit = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
+  if (explicit) return `${explicit}/api/v1`;
+  if (process.env.NODE_ENV === "production") return `${backend}/api/v1`;
+  return API_BASE;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -116,7 +128,7 @@ export const api = {
     }),
   delete: (endpoint: string, init?: RequestInit) =>
     request<void>(endpoint, { method: "DELETE", ...init }),
-  /** Same-origin upload via Next.js rewrite (works for PDF/DOCX up to 4MB) */
+  /** Direct to FastAPI (bypass Next rewrite — fixes PDF/DOCX upload 500 on Vercel) */
   upload: <T>(endpoint: string, formData: FormData, init?: RequestInit) => {
     const file = formData.get("file");
     if (file instanceof File && file.size > MAX_UPLOAD_BYTES) {
@@ -124,7 +136,11 @@ export const api = {
         new ApiError(400, "File too large (max 4MB). Export a lighter PDF or use .txt/.md.")
       );
     }
-    return request<T>(endpoint, { method: "POST", body: formData, ...init });
+    return request<T>(
+      endpoint,
+      { method: "POST", body: formData, ...init },
+      resolveUploadBase()
+    );
   },
   maxUploadBytes: MAX_UPLOAD_BYTES,
 };
