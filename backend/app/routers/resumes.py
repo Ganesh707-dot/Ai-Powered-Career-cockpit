@@ -1,3 +1,4 @@
+import base64
 import logging
 import tempfile
 from datetime import date
@@ -15,31 +16,97 @@ from app.schemas.resume import (
     ResumeResponse,
     ResumeTextResponse,
     ResumeUpdate,
+    ResumeUploadJson,
 )
 from app.services.file_extract import FileExtractError, extract_text
 
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
 logger = logging.getLogger("careerpilot.resumes")
 
+MAX_BYTES = 4 * 1024 * 1024
+
 
 def _to_response(resume) -> ResumeResponse:
     text = resume.extracted_text or ""
-    return ResumeResponse(
-        id=resume.id,
-        name=resume.name,
-        resume_type=ResumeType(ResumeType.coerce(resume.resume_type)),
-        target_role=resume.target_role,
-        skills_highlighted=resume.skills_highlighted,
-        notes=resume.notes,
-        file_path=resume.file_path,
-        original_filename=resume.original_filename,
-        last_updated=resume.last_updated,
-        has_file=bool(resume.original_filename or resume.file_path),
-        has_extracted_text=bool(text.strip()),
-        extracted_text_preview=(text[:280] + "…") if len(text) > 280 else (text or None),
-        created_at=resume.created_at,
-        updated_at=resume.updated_at,
-    )
+    try:
+        return ResumeResponse(
+            id=resume.id,
+            name=resume.name,
+            resume_type=ResumeType(ResumeType.coerce(resume.resume_type)),
+            target_role=resume.target_role,
+            skills_highlighted=resume.skills_highlighted,
+            notes=resume.notes,
+            file_path=resume.file_path,
+            original_filename=resume.original_filename,
+            last_updated=resume.last_updated,
+            has_file=bool(resume.original_filename or resume.file_path),
+            has_extracted_text=bool(text.strip()),
+            extracted_text_preview=(text[:280] + "…") if len(text) > 280 else (text or None),
+            created_at=resume.created_at,
+            updated_at=resume.updated_at,
+        )
+    except Exception as exc:
+        logger.exception("Resume response serialization failed for id=%s", resume.id)
+        raise HTTPException(status_code=500, detail="Resume saved but response failed.") from exc
+
+
+def _save_resume_from_bytes(
+    db: Session,
+    *,
+    raw: bytes,
+    filename: str,
+    name: str | None,
+    resume_type: str,
+    target_role: str | None,
+) -> ResumeResponse:
+    if len(raw) > MAX_BYTES:
+        raise HTTPException(status_code=400, detail="File too large (max 4MB)")
+
+    safe_name = Path(filename).name[:255] or "resume.txt"
+    try:
+        text = extract_text(safe_name, raw)
+    except FileExtractError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Text extraction failed for %s", safe_name)
+        raise HTTPException(
+            status_code=400,
+            detail="Could not read this file. Try Paste text or a text-based PDF/DOCX.",
+        ) from exc
+
+    rtype = ResumeType.coerce(resume_type)
+    ensure_resume_schema()
+    repo = ResumeRepository(db)
+    try:
+        resume = repo.create(
+            ResumeCreate(
+                name=(name or Path(safe_name).stem)[:255],
+                resume_type=ResumeType(rtype),
+                target_role=target_role,
+                original_filename=safe_name,
+                extracted_text=text[:50000],
+                last_updated=date.today(),
+                notes=f"Uploaded file: {safe_name}",
+            )
+        )
+    except Exception as exc:
+        logger.exception("Resume upload DB error")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save resume to database. Try Paste text or Add manually.",
+        ) from exc
+
+    try:
+        upload_dir = Path(tempfile.gettempdir()) / "careerpilot_uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        dest = upload_dir / f"{date.today().isoformat()}_{safe_name}"
+        dest.write_bytes(raw)
+        repo.update(resume.id, ResumeUpdate(file_path=str(dest)))
+        resume = repo.get_by_id(resume.id) or resume
+    except Exception:
+        logger.warning("Temp file save skipped for resume %s", resume.id)
+
+    return _to_response(resume)
 
 
 @router.get("", response_model=ResumeListResponse)
@@ -136,57 +203,32 @@ async def upload_resume(
     db: Session = Depends(get_db),
 ):
     raw = await file.read()
-    if len(raw) > 4 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large (max 4MB)")
-
     filename = file.filename or "resume.txt"
+    return _save_resume_from_bytes(
+        db,
+        raw=raw,
+        filename=filename,
+        name=name,
+        resume_type=resume_type,
+        target_role=target_role,
+    )
+
+
+@router.post("/upload-json", response_model=ResumeResponse, status_code=201)
+def upload_resume_json(body: ResumeUploadJson, db: Session = Depends(get_db)):
+    """Reliable JSON/base64 upload — fallback when multipart fails on mobile or CDN."""
     try:
-        text = extract_text(filename, raw)
-    except FileExtractError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raw = base64.b64decode(body.content_base64, validate=True)
     except Exception as exc:
-        logger.exception("Text extraction failed for %s", filename)
-        raise HTTPException(
-            status_code=400,
-            detail="Could not read this file. Try a text-based PDF, .docx, or .txt.",
-        ) from exc
-
-    rtype = ResumeType.coerce(resume_type)
-    safe_name = Path(filename).name
-    ensure_resume_schema()
-
-    repo = ResumeRepository(db)
-    try:
-        resume = repo.create(
-            ResumeCreate(
-                name=name or Path(filename).stem,
-                resume_type=ResumeType(rtype),
-                target_role=target_role,
-                original_filename=safe_name,
-                extracted_text=text[:50000],
-                last_updated=date.today(),
-                notes=f"Uploaded file: {safe_name}",
-            )
-        )
-    except Exception as exc:
-        logger.exception("Resume upload DB error")
-        raise HTTPException(
-            status_code=500,
-            detail="Could not save resume to database. Try Paste text or Add manually.",
-        ) from exc
-
-    # Optional temp copy (text is durable in DB)
-    try:
-        upload_dir = Path(tempfile.gettempdir()) / "careerpilot_uploads"
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        dest = upload_dir / f"{date.today().isoformat()}_{safe_name}"
-        dest.write_bytes(raw)
-        repo.update(resume.id, ResumeUpdate(file_path=str(dest)))
-        resume = repo.get_by_id(resume.id) or resume
-    except Exception:
-        logger.warning("Temp file save skipped for resume %s", resume.id)
-
-    return _to_response(resume)
+        raise HTTPException(status_code=400, detail="Invalid file encoding.") from exc
+    return _save_resume_from_bytes(
+        db,
+        raw=raw,
+        filename=body.filename,
+        name=body.name,
+        resume_type=body.resume_type,
+        target_role=body.target_role,
+    )
 
 
 @router.patch("/{resume_id}", response_model=ResumeResponse)

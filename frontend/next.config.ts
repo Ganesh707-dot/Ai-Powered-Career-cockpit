@@ -7,6 +7,11 @@ const backendUrl =
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  compress: true,
+  poweredByHeader: false,
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
   async rewrites() {
     // Same-origin /api/v1/* → FastAPI (avoids CORS in production)
     return [

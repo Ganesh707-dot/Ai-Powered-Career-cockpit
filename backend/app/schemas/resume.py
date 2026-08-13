@@ -51,3 +51,11 @@ class ResumeListResponse(BaseModel):
 class ResumeTextResponse(BaseModel):
     id: int
     extracted_text: str
+
+
+class ResumeUploadJson(BaseModel):
+    filename: str = Field(..., min_length=1, max_length=255)
+    content_base64: str = Field(..., min_length=8)
+    name: str | None = None
+    target_role: str | None = None
+    resume_type: str = "Full Stack Resume"

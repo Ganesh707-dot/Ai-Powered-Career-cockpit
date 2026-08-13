@@ -76,15 +76,15 @@ export default function ResumesPage() {
     text: "",
   });
 
-  const fetchResumes = async () => {
-    setLoading(true);
+  const fetchResumes = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await api.get<ResumeListResponse>("/resumes");
       setResumes(data.items);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not load resumes");
+      if (!silent) setError(err instanceof ApiError ? err.message : "Could not load resumes");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -207,21 +207,22 @@ export default function ResumesPage() {
     setError(null);
     setSuccess(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("name", file.name.replace(/\.[^.]+$/, ""));
-      fd.append("resume_type", uploadType);
-      const uploaded = await api.upload<Resume>("/resumes/upload", fd);
-      let excerpt = "";
-      try {
-        const textRes = await api.get<{ extracted_text: string }>(`/resumes/${uploaded.id}/text`);
-        excerpt = textRes.extracted_text.slice(0, 5000);
-      } catch {
-        /* text stored in DB on upload */
+      const uploaded = await api.uploadResumeFile<Resume>(file, {
+        name: file.name.replace(/\.[^.]+$/, "") || "My resume",
+        resume_type: uploadType,
+      });
+      let excerpt = uploaded.extracted_text_preview ?? "";
+      if (!excerpt && uploaded.has_extracted_text) {
+        try {
+          const textRes = await api.get<{ extracted_text: string }>(`/resumes/${uploaded.id}/text`);
+          excerpt = textRes.extracted_text.slice(0, 5000);
+        } catch {
+          /* optional */
+        }
       }
       syncProfileFromResume(profile, uploaded, excerpt);
       setSuccess(`Uploaded “${uploaded.name}” successfully.`);
-      await fetchResumes();
+      await fetchResumes(true);
     } catch (err) {
       const msg =
         err instanceof ApiError
@@ -229,7 +230,11 @@ export default function ResumesPage() {
           : err instanceof Error
             ? err.message
             : "Upload failed";
-      setError(msg);
+      setError(
+        msg.includes("scanned") || msg.includes("extract text")
+          ? `${msg} Tip: use Paste text / statement for image-based PDFs.`
+          : msg
+      );
     } finally {
       setUploading(false);
     }
@@ -296,7 +301,7 @@ export default function ResumesPage() {
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf,.txt,.md,.docx"
+            accept=".pdf,.txt,.md,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
             className="hidden"
             onChange={(e) => {
               handleUpload(e.target.files?.[0] || null);
